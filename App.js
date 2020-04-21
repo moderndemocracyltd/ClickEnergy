@@ -1,83 +1,40 @@
 /**
- * Sample React Native App
- * https://github.com/facebook/react-native
- *
  * @format
  * @flow strict-local
  */
 
 import React, { Component } from 'react';
-import {
-  SafeAreaView,
-  StyleSheet,
-  ScrollView,
-  View,
-  Text,
-  StatusBar,
-} from 'react-native';
+import { NavigationContainer } from '@react-navigation/native';
+import { createStackNavigator } from '@react-navigation/stack';
+import BrowserHandler from "./components/BrowserHandler";
+import { SafeAreaView, Platform, StatusBar, View } from 'react-native'
 
-import {
-  Header,
-  Colors,
-} from 'react-native/Libraries/NewAppScreen';
+const Stack = createStackNavigator();
 
 class App extends Component {
+
+  componentDidMount(){
+    StatusBar.setBarStyle('light-content', true);
+  }
+
   render() {
     return (
       <>
-        <StatusBar barStyle="dark-content" />
-        <SafeAreaView>
-          <ScrollView
-            contentInsetAdjustmentBehavior="automatic"
-            style={styles.scrollView}>
-            <Header />
-            <View style={styles.body}>
-              <Text>Click Energy NI Test</Text>
-            </View>
-          </ScrollView>
-        </SafeAreaView>
+        <SafeAreaView style={{ flex: 0, backgroundColor: '#243a47' }} />
+        <NavigationContainer>
+          <Stack.Navigator
+            screenOptions={{ headerShown: false }}
+            initialRouteName="Browser">
+
+            <Stack.Screen
+              name="Browser"
+              component={BrowserHandler}
+            />
+          </Stack.Navigator>
+        </NavigationContainer>
       </>
     );
   }
 };
-
-const styles = StyleSheet.create({
-  scrollView: {
-    backgroundColor: Colors.lighter,
-  },
-  engine: {
-    position: 'absolute',
-    right: 0,
-  },
-  body: {
-    backgroundColor: Colors.white,
-  },
-  sectionContainer: {
-    marginTop: 32,
-    paddingHorizontal: 24,
-  },
-  sectionTitle: {
-    fontSize: 24,
-    fontWeight: '600',
-    color: Colors.black,
-  },
-  sectionDescription: {
-    marginTop: 8,
-    fontSize: 18,
-    fontWeight: '400',
-    color: Colors.dark,
-  },
-  highlight: {
-    fontWeight: '700',
-  },
-  footer: {
-    color: Colors.dark,
-    fontSize: 12,
-    fontWeight: '600',
-    padding: 4,
-    paddingRight: 12,
-    textAlign: 'right',
-  },
-});
 
 export default App;
