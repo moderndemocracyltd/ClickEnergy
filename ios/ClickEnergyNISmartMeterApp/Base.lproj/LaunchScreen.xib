@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<document type="com.apple.InterfaceBuilder3.CocoaTouch.XIB" version="3.0" toolsVersion="16096" targetRuntime="iOS.CocoaTouch" propertyAccessControl="none" useAutolayout="YES" launchScreen="YES" useTraitCollections="YES" colorMatched="YES">
+    <device id="ipad12_9rounded" orientation="landscape" layout="fullscreen" appearance="light"/>
+    <dependencies>
+        <deployment identifier="iOS"/>
+        <plugIn identifier="com.apple.InterfaceBuilder.IBCocoaTouchPlugin" version="16087"/>
+        <capability name="documents saved in the Xcode 8 format" minToolsVersion="8.0"/>
+    </dependencies>
+    <objects>
+        <placeholder placeholderIdentifier="IBFilesOwner" id="-1" userLabel="File's Owner"/>
+        <placeholder placeholderIdentifier="IBFirstResponder" id="-2" customClass="UIResponder"/>
+        <view contentMode="scaleToFill" id="iN0-l3-epB">
+            <rect key="frame" x="0.0" y="0.0" width="596" height="600"/>
+            <autoresizingMask key="autoresizingMask" widthSizable="YES" heightSizable="YES"/>
+            <subviews>
+                <imageView clipsSubviews="YES" userInteractionEnabled="NO" contentMode="scaleToFill" horizontalHuggingPriority="251" verticalHuggingPriority="251" image="ClickEnergyLogo" translatesAutoresizingMaskIntoConstraints="NO" id="rhv-sk-wPj">
+                    <rect key="frame" x="198" y="200" width="200" height="200"/>
+                </imageView>
+                <label opaque="NO" userInteractionEnabled="NO" contentMode="left" horizontalHuggingPriority="251" verticalHuggingPriority="251" text="Powered by Click Energy NI" textAlignment="natural" lineBreakMode="tailTruncation" baselineAdjustment="alignBaselines" adjustsFontSizeToFit="NO" translatesAutoresizingMaskIntoConstraints="NO" id="3MA-8G-hbs">
+                    <rect key="frame" x="193" y="440" width="210" height="21"/>
+                    <fontDescription key="fontDescription" type="system" pointSize="17"/>
+                    <nil key="textColor"/>
+                    <nil key="highlightedColor"/>
+                </label>
+            </subviews>
+            <color key="backgroundColor" red="1" green="1" blue="1" alpha="1" colorSpace="custom" customColorSpace="sRGB"/>
+            <constraints>
+                <constraint firstItem="3MA-8G-hbs" firstAttribute="centerX" secondItem="iN0-l3-epB" secondAttribute="centerX" id="Bh6-E2-kHQ"/>
+                <constraint firstItem="rhv-sk-wPj" firstAttribute="centerY" secondItem="iN0-l3-epB" secondAttribute="centerY" id="KdB-3N-jGE"/>
+                <constraint firstItem="3MA-8G-hbs" firstAttribute="centerY" secondItem="iN0-l3-epB" secondAttribute="centerY" constant="150.5" id="WrW-R7-4rq"/>
+                <constraint firstItem="rhv-sk-wPj" firstAttribute="centerX" secondItem="iN0-l3-epB" secondAttribute="centerX" id="z8p-3h-1fV"/>
+            </constraints>
+            <nil key="simulatedStatusBarMetrics"/>
+            <freeformSimulatedSizeMetrics key="simulatedDestinationMetrics"/>
+            <point key="canvasLocation" x="-14.934114202049779" y="-227.34374999999997"/>
+        </view>
+    </objects>
+    <resources>
+        <image name="ClickEnergyLogo" width="200" height="200"/>
+    </resources>
+</document>
