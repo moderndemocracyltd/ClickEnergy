@@ -32,7 +32,7 @@ class App extends Component {
             style={styles.scrollView}>
             <Header />
             <View style={styles.body}>
-              <Text>Click Energy NI</Text>
+              <Text>Click Energy NI Test</Text>
             </View>
           </ScrollView>
         </SafeAreaView>
