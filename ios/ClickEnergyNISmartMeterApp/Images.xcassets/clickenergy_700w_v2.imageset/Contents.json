@@ -1,17 +1,15 @@
 {
   "images" : [
     {
-      "filename" : "ClickEnergyLogo.jpeg",
+      "filename" : "clickenergy_700w_v2.jpg",
       "idiom" : "universal",
       "scale" : "1x"
     },
     {
-      "filename" : "ClickEnergyLogo-1.jpeg",
       "idiom" : "universal",
       "scale" : "2x"
     },
     {
-      "filename" : "ClickEnergyLogo-2.jpeg",
       "idiom" : "universal",
       "scale" : "3x"
     }
