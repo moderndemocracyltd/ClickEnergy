@@ -1,11 +1,11 @@
 {
   "images" : [
     {
-      "filename" : "clickenergy_700w_v2.jpg",
       "idiom" : "universal",
       "scale" : "1x"
     },
     {
+      "filename" : "clickenergy_700w_v2.jpg",
       "idiom" : "universal",
       "scale" : "2x"
     },
