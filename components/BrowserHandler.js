@@ -4,13 +4,15 @@ import { WebView } from 'react-native-webview';
 
 const BrowserHandler = (props) => {
 
-    const [baseURL, setURl] = useState("https://www.clickenergyni.com/?returnurl=%2fDashboard%2fSummary.aspx");
+    const [baseURL, setbaseURl] = useState("");
 
     useEffect(() => {
         if (global.__DEV__) {
-            setURl("https://staging.clickenergyni.com/?returnurl=%2fDashboard%2fSummary.aspx")
+            setbaseURl("https://staging.clickenergyni.com/?returnurl=%2fDashboard%2fSummary.aspx");
+        } else {
+            setbaseURl("https://www.clickenergyni.com/?returnurl=%2fDashboard%2fSummary.aspx");
         }
-    });
+    },[]);
 
     return (
         <WebView
