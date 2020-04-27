@@ -20,9 +20,10 @@ const BrowserHandler = (props) => {
     const handleNavigationChange = async newNavState => {
         const { url } = newNavState;
 
+        if (!url || newNavState.title.includes("about:blank")) return;
+
         if (!url.includes(baseURL)) {
             this.webView.stopLoading();
-
             const supported = await Linking.canOpenURL(url);
             if (supported) {
                 await Linking.openURL(url);
