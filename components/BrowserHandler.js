@@ -16,8 +16,8 @@ export default BrowserHandler = (props) => {
     useEffect(() => {
 
         if (global.__DEV__) {
-        //     setbaseURl("https://staging.clickenergyni.com/?returnurl=%2fDashboard%2fSummary.aspx");
-        // } else {
+            setbaseURl("https://staging.clickenergyni.com/?returnurl=%2fDashboard%2fSummary.aspx");
+        } else {
             setbaseURl("https://www.clickenergyni.com/?returnurl=%2fDashboard%2fSummary.aspx");
         }
 
