@@ -51,6 +51,7 @@
 		13B07FB51A68108700A75B9A /* Images.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; name = Images.xcassets; path = ClickEnergyNISmartMeterApp/Images.xcassets; sourceTree = "<group>"; };
 		13B07FB61A68108700A75B9A /* Info.plist */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; name = Info.plist; path = ClickEnergyNISmartMeterApp/Info.plist; sourceTree = "<group>"; };
 		13B07FB71A68108700A75B9A /* main.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; name = main.m; path = ClickEnergyNISmartMeterApp/main.m; sourceTree = "<group>"; };
+		22F3125C2459CEF500E17207 /* Click Energy.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; name = "Click Energy.entitlements"; path = "ClickEnergyNISmartMeterApp/Click Energy.entitlements"; sourceTree = "<group>"; };
 		246C7D8710FD88DDDC43DE0E /* Pods-ClickEnergyNISmartMeterApp-tvOS.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-ClickEnergyNISmartMeterApp-tvOS.release.xcconfig"; path = "Target Support Files/Pods-ClickEnergyNISmartMeterApp-tvOS/Pods-ClickEnergyNISmartMeterApp-tvOS.release.xcconfig"; sourceTree = "<group>"; };
 		2D02E47B1E0B4A5D006451C7 /* ClickEnergyNISmartMeterApp-tvOS.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "ClickEnergyNISmartMeterApp-tvOS.app"; sourceTree = BUILT_PRODUCTS_DIR; };
 		2D02E4901E0B4A5D006451C7 /* ClickEnergyNISmartMeterApp-tvOSTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = "ClickEnergyNISmartMeterApp-tvOSTests.xctest"; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -125,6 +126,7 @@
 		13B07FAE1A68108700A75B9A /* ClickEnergyNISmartMeterApp */ = {
 			isa = PBXGroup;
 			children = (
+				22F3125C2459CEF500E17207 /* Click Energy.entitlements */,
 				008F07F21AC5B25A0029DE68 /* main.jsbundle */,
 				13B07FAF1A68108700A75B9A /* AppDelegate.h */,
 				13B07FB01A68108700A75B9A /* AppDelegate.m */,
@@ -630,6 +632,7 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CLANG_ENABLE_MODULES = YES;
+				CODE_SIGN_ENTITLEMENTS = "ClickEnergyNISmartMeterApp/Click Energy.entitlements";
 				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
@@ -646,7 +649,7 @@
 					"-ObjC",
 					"-lc++",
 				);
-				PRODUCT_BUNDLE_IDENTIFIER = com.clickenergyni.smartapp;
+				PRODUCT_BUNDLE_IDENTIFIER = com.clickenergyni.smartmeterapp;
 				PRODUCT_NAME = "Click Energy";
 				PROVISIONING_PROFILE_SPECIFIER = "";
 				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
@@ -662,6 +665,7 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CLANG_ENABLE_MODULES = YES;
+				CODE_SIGN_ENTITLEMENTS = "ClickEnergyNISmartMeterApp/Click Energy.entitlements";
 				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
@@ -673,7 +677,7 @@
 					"-ObjC",
 					"-lc++",
 				);
-				PRODUCT_BUNDLE_IDENTIFIER = com.clickenergyni.smartapp;
+				PRODUCT_BUNDLE_IDENTIFIER = com.clickenergyni.smartmeterapp;
 				PRODUCT_NAME = "Click Energy";
 				PROVISIONING_PROFILE_SPECIFIER = "";
 				SWIFT_VERSION = 5.0;
