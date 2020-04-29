@@ -1,12 +1,12 @@
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { BackHandler } from 'react-native';
 import { WebView } from 'react-native-webview';
 
-const BrowserHandler = (props) => {
+export default BrowserHandler = (props) => {
 
     const [baseURL, setbaseURl] = useState("");
-    const WEBVIEW_REF = React.createRef();
+    const WEBVIEW_REF = useRef();
 
     handleBackButtonClick = () => {
         WEBVIEW_REF.current.goBack(null);
@@ -33,5 +33,3 @@ const BrowserHandler = (props) => {
         />
     );
 };
-
-export default BrowserHandler
