@@ -1,36 +1,27 @@
 
 import React, { useEffect, useState, useRef } from 'react';
-import { BackHandler } from 'react-native';
+import { BackHandler, Linking } from 'react-native';
 import { WebView } from 'react-native-webview';
-import { Linking } from 'react-native';
 
 export default BrowserHandler = (props) => {
 
     const WEBVIEW_REF = useRef();
 
     const [baseURL, setbaseURl] = useState("");
+    const [viewSource, setViewSource] = useState("");
 
     handleBackButtonClick = () => {
         WEBVIEW_REF.current.goBack();
         return true;
     }
 
-    useEffect(() => {
-
-        if (global.__DEV__) {
-        //     setbaseURl("https://staging.clickenergyni.com");
-        // } else {
-            setbaseURl("https://www.clickenergyni.com");
-        }
-
-        BackHandler.addEventListener("hardwareBackPress", handleBackButtonClick);
-        return () => BackHandler.removeEventListener("hardwareBackPress", handleBackButtonClick);
-    },[]);
-
     handleNavigationChange = async newNavState => {
-        const { url } = newNavState;
+        const { url, title } = newNavState;
 
-        if (!url || newNavState.title.includes("about:blank")) return;
+        if (title === "about:blank") {
+            WEBVIEW_REF.current.goForward();
+            return;
+        }
 
         if (!url.includes(baseURL)) {
             WEBVIEW_REF.current.stopLoading();
@@ -43,11 +34,30 @@ export default BrowserHandler = (props) => {
         }
     }
 
+    useEffect(() => {
+
+        let prefix = "";
+        if (global.__DEV__) {
+            prefix = "https://staging.clickenergyni.com";
+        } else {
+            prefix = "https://www.clickenergyni.com";
+        } 
+        setbaseURl(prefix);
+        setViewSource(`${prefix}/?returnurl=%2fDashboard%2fSummary.aspx`)
+
+        BackHandler.addEventListener("hardwareBackPress", handleBackButtonClick);
+        return () => BackHandler.removeEventListener("hardwareBackPress", handleBackButtonClick);
+    },
+        [baseURL, viewSource]
+    );
+
     return (
         <WebView
-            ref={ WEBVIEW_REF }
-            source={{ uri: `${baseURL}/?returnurl=%2fDashboard%2fSummary.aspx` }}
+            ref={WEBVIEW_REF}
+            source={{ uri: viewSource }}
             onNavigationStateChange={handleNavigationChange}
+            allowsBackForwardNavigationGestures={true}
+            bounces={false}
         />
     );
 };
