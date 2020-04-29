@@ -48,7 +48,7 @@ export default BrowserHandler = (props) => {
         BackHandler.addEventListener("hardwareBackPress", handleBackButtonClick);
         return () => BackHandler.removeEventListener("hardwareBackPress", handleBackButtonClick);
     },
-        [baseURL, viewSource]
+        [viewSource]
     );
 
     return (
