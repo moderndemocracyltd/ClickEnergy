@@ -23,7 +23,7 @@ export default BrowserHandler = (props) => {
             return;
         }
 
-        if (!url.includes(baseURL)) {
+        if (!url.includes(baseURL) && !url.includes("https://pay.judopay.com")) {
             WEBVIEW_REF.current.stopLoading();
             const supported = await Linking.canOpenURL(url);
             if (supported) {
@@ -43,7 +43,7 @@ export default BrowserHandler = (props) => {
             prefix = "https://www.clickenergyni.com";
         } 
         setbaseURl(prefix);
-        setViewSource(`${prefix}/?returnurl=%2fDashboard%2fSummary.aspx`)
+        setViewSource(`${prefix}/Dashboard/Summary.aspx`)
 
         BackHandler.addEventListener("hardwareBackPress", handleBackButtonClick);
         return () => BackHandler.removeEventListener("hardwareBackPress", handleBackButtonClick);
@@ -58,6 +58,10 @@ export default BrowserHandler = (props) => {
             onNavigationStateChange={handleNavigationChange}
             allowsBackForwardNavigationGestures={true}
             bounces={false}
+            cacheEnabled={true}
+            cacheMode={"LOAD_DEFAULT"}
+            sharedCookiesEnabled={true}
+            thirdPartyCookiesEnabled={true}
         />
     );
 };
