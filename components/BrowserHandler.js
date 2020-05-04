@@ -28,7 +28,7 @@ export default BrowserHandler = (props) => {
             return;
         }
 
-        if (!url.includes(baseURL)) {
+        if (!url.includes(baseURL) && !url.includes("https://pay.judopay.com")) {
             WEBVIEW_REF.current.stopLoading();
             const supported = await Linking.canOpenURL(url);
             if (supported) {
