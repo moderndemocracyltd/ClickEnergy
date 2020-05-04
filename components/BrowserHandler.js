@@ -1,10 +1,9 @@
 
 import React, { useEffect, useState, useRef } from 'react';
-import { BackHandler, Linking } from 'react-native';
+import { BackHandler, Linking, ActivityIndicator } from 'react-native';
 import { WebView } from 'react-native-webview';
 import CookieManager from '@react-native-community/react-native-cookies';
 import AsyncStorage from '@react-native-community/async-storage';
-
 
 export default BrowserHandler = (props) => {
 
@@ -14,6 +13,7 @@ export default BrowserHandler = (props) => {
     const [viewSource, setViewSource] = useState("");
     const [sessionCookie, setSessionCookie] = useState("");
     const [authCookie, setAuthCookie] = useState("");
+    const [isLoading, setIsLoading] = useState(true);
 
     handleBackButtonClick = () => {
         WEBVIEW_REF.current.goBack();
@@ -22,13 +22,6 @@ export default BrowserHandler = (props) => {
 
     handleNavigationChange = async newNavState => {
         const { url, title } = newNavState;
-
-        if (WEBVIEW_REF.current) {
-            const cookies = await CookieManager.get(url, true);
-            
-            //console.log(cookies, cookies[".ASPXFORMSAUTH"])
-            persistCookies(cookies);
-        }
 
         if (title === "about:blank") {
             WEBVIEW_REF.current.goForward();
@@ -44,31 +37,61 @@ export default BrowserHandler = (props) => {
                 alert(`Can't open link: ${url}`);
             }
         }
+
+        await updateCookies();
     }
 
-    persistCookies = async (cookies) => {
-        if (cookies["ASP.NET_SessionId"]) {
-            await AsyncStorage.setItem('@session', cookies["ASP.NET_SessionId"]);
-            console.log("session saved");
-        }
-        if (cookies[".ASPXFORMSAUTH"]) {
-            await AsyncStorage.setItem('@auth', cookies[".ASPXFORMSAUTH"]);
-            console.log("auth saved");
-        }
+    updateCookies = async () => {
+        await CookieManager
+            .getAll(true)
+            .then(async (res) => {
+
+                let newAuth = res[".ASPXFORMSAUTH"];
+                let newSession = res["ASP.NET_SessionId"];
+
+                if (newAuth && newAuth !== authCookie) {
+                    setAuthCookie(newAuth);
+                    await AsyncStorage.setItem('@auth', JSON.stringify(newAuth));
+                }
+                if (newSession && newSession !== sessionCookie) {
+                    setSessionCookie(newSession);
+                    await AsyncStorage.setItem('@session', JSON.stringify(newSession));
+                }
+            });
     }
 
-    readCookies = async () => {
-        let session= await AsyncStorage.getItem('@session');
-        let auth = await AsyncStorage.getItem('@auth');
-        if(session){
-            setSessionCookie(session)
-        }
-        if(auth){
-            setAuthCookie(auth)
-        }
+    readStoredCookie = async () => {
+        await AsyncStorage
+            .multiGet(['@auth', '@session'])
+            .then(async stored => {
+
+                for (const cookie of stored) {
+
+                    let parsed = JSON.parse(cookie[1]);
+
+                    await CookieManager.set({
+                        name: parsed.name ? parsed.name : '',
+                        value: parsed.value ? parsed.value : '',
+                        domain: parsed.domain ? parsed.domain : '',
+                        origin: parsed.origin ? parsed.origin : '',
+                        path: parsed.path ? parsed.path : '/',
+                        version: parsed.version ? parsed.version : '1',
+                        expiration: parsed.expiration ? parsed.expiration : '2050-01-30T12:30:00.00-05:00'
+                    })
+                }
+                setIsLoading(false);
+            });
     }
 
     useEffect(() => {
+        //Read cookies status before setting url
+        //---------------------------------------
+        //auth
+        //www.clickenergyni.com/Dashboard/Top-Up.aspx
+        //no auth
+        //www.clickenergyni.com/Dashboard/Summary.aspx
+
+        readStoredCookie();
 
         let prefix = "";
         if (global.__DEV__) {
@@ -77,33 +100,48 @@ export default BrowserHandler = (props) => {
             prefix = "https://www.clickenergyni.com";
         }
         setbaseURl(prefix);
-        setViewSource(`${prefix}/Dashboard/Summary.aspx`)
-        readCookies()
-
+        setViewSource(`${prefix}/Dashboard/Top-Up.aspx`);
+        
         BackHandler.addEventListener("hardwareBackPress", handleBackButtonClick);
-        return () => BackHandler.removeEventListener("hardwareBackPress", handleBackButtonClick);
+
+        return cleanUp = () => {
+            BackHandler.removeEventListener("hardwareBackPress", handleBackButtonClick);
+        }
     },
-        [viewSource, sessionCookie, authCookie]
+        []
     );
 
     return (
-        <WebView
-            ref={WEBVIEW_REF}
-            source={{
-                uri: viewSource,
-                // headers: {
-                //     Cookie: 
-                //     `ASP.NET_SessionId=${sessionCookie}; 
-                //     .ASPXFORMSAUTH=${authCookie};`
-                // }
-            }}
-            onNavigationStateChange={handleNavigationChange}
-            allowsBackForwardNavigationGestures={true}
-            bounces={false}
-            cacheEnabled={true}
-            cacheMode={"LOAD_DEFAULT"}
-            sharedCookiesEnabled={true}
-            thirdPartyCookiesEnabled={true}
-        />
+        <>
+            {isLoading &&
+                <ActivityIndicator
+                    style={{
+                        flex: 1,
+                        left: 0,
+                        right: 0,
+                        top: 0,
+                        bottom: 0,
+                        position: 'absolute',
+                        alignItems: 'center',
+                        justifyContent: 'center'
+                    }}
+                    size="large"
+                />
+            }
+            {!isLoading &&
+                <WebView
+                    ref={WEBVIEW_REF}
+                    useWebKit={true}
+                    source={{ uri: viewSource, }}
+                    onNavigationStateChange={handleNavigationChange}
+                    allowsBackForwardNavigationGestures={true}
+                    bounces={false}
+                    cacheEnabled={true}
+                    cacheMode={"LOAD_DEFAULT"}
+                    sharedCookiesEnabled={true}
+                    thirdPartyCookiesEnabled={true}
+                />
+            }
+        </>
     );
 };

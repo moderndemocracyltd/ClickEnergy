@@ -4,10 +4,11 @@
  */
 
 import React from 'react';
+import { SafeAreaView, StatusBar } from 'react-native';
 import { NavigationContainer } from '@react-navigation/native';
 import { createStackNavigator } from '@react-navigation/stack';
+
 import BrowserHandler from "./components/BrowserHandler";
-import { SafeAreaView, StatusBar } from 'react-native'
 
 const Stack = createStackNavigator();
 
