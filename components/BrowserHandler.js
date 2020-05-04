@@ -14,7 +14,7 @@ export default BrowserHandler = (props) => {
     const [sessionCookie, setSessionCookie] = useState("");
     const [authCookie, setAuthCookie] = useState("");
     const [isLoading, setIsLoading] = useState(true);
-
+    
     handleBackButtonClick = () => {
         WEBVIEW_REF.current.goBack();
         return true;
