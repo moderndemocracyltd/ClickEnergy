@@ -122,11 +122,16 @@ export default BrowserHandler = (props) => {
         }
         setbaseURl(prefix);
 
-        if (authPresent) {
-            setViewSource(`${prefix}/Dashboard/Top-Up.aspx`);
+        if(Platform.OS === 'ios'){
+            if (authPresent) {
+                setViewSource(`${prefix}/Dashboard/Top-Up.aspx`);
+            } else {
+                setViewSource(`${prefix}/Dashboard/Summary.aspx`);
+            }
         } else {
             setViewSource(`${prefix}/Dashboard/Summary.aspx`);
         }
+
     }
 
     useEffect(() => {
