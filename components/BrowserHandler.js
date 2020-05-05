@@ -11,10 +11,10 @@ export default BrowserHandler = (props) => {
 
     const [baseURL, setbaseURl] = useState("");
     const [viewSource, setViewSource] = useState("");
-    const [sessionCookie, setSessionCookie] = useState("");
-    const [authCookie, setAuthCookie] = useState("");
+    const [sessionCookie, setSessionCookie] = useState({});
+    const [authCookie, setAuthCookie] = useState({});
     const [isLoading, setIsLoading] = useState(true);
-    
+
     handleBackButtonClick = () => {
         WEBVIEW_REF.current.goBack();
         return true;
@@ -42,57 +42,54 @@ export default BrowserHandler = (props) => {
     }
 
     updateCookies = async () => {
-        await CookieManager
-            .getAll(true)
-            .then(async (res) => {
+        await CookieManager.getAll(true).then(async (res) => {
+            let newAuth = res[".ASPXFORMSAUTH"];
+            let newSession = res["ASP.NET_SessionId"];
 
-                let newAuth = res[".ASPXFORMSAUTH"];
-                let newSession = res["ASP.NET_SessionId"];
-
-                if (newAuth && newAuth !== authCookie) {
-                    setAuthCookie(newAuth);
-                    await AsyncStorage.setItem('@auth', JSON.stringify(newAuth));
-                }
-                if (newSession && newSession !== sessionCookie) {
-                    setSessionCookie(newSession);
-                    await AsyncStorage.setItem('@session', JSON.stringify(newSession));
-                }
-            });
+            if (newAuth && newAuth !== authCookie) {
+                setAuthCookie(newAuth);
+                await AsyncStorage.setItem('@auth', JSON.stringify(newAuth));
+            }
+            if (newSession && newSession !== sessionCookie) {
+                setSessionCookie(newSession);
+                await AsyncStorage.setItem('@session', JSON.stringify(newSession));
+            }
+        });
     }
 
     readStoredCookie = async () => {
-        await AsyncStorage
-            .multiGet(['@auth', '@session'])
+        await AsyncStorage.multiGet(['@auth', '@session'])
             .then(async stored => {
+
+                let authPresent = false;
 
                 for (const cookie of stored) {
 
                     let parsed = JSON.parse(cookie[1]);
 
+                    if (parsed?.name === ".ASPXFORMSAUTH") {
+                        setAuthCookie(parsed);
+                        authPresent = true;
+                    }
+                    if (parsed?.name === "ASP.NET_SessionId") {
+                        setSessionCookie(parsed);
+                    }
                     await CookieManager.set({
-                        name: parsed.name ? parsed.name : '',
-                        value: parsed.value ? parsed.value : '',
-                        domain: parsed.domain ? parsed.domain : '',
-                        origin: parsed.origin ? parsed.origin : '',
-                        path: parsed.path ? parsed.path : '/',
-                        version: parsed.version ? parsed.version : '1',
-                        expiration: parsed.expiration ? parsed.expiration : '2050-01-30T12:30:00.00-05:00'
+                        name: parsed?.name ? parsed?.name : '',
+                        value: parsed?.value ? parsed?.value : '',
+                        domain: parsed?.domain ? parsed?.domain : '',
+                        origin: parsed?.origin ? parsed?.origin : '',
+                        path: parsed?.path ? parsed?.path : '/',
+                        version: parsed?.version ? parsed?.version : '1',
+                        expiration: parsed?.expiration ? parsed?.expiration : '2050-01-30T12:30:00.00-05:00'
                     })
                 }
+                setUpView(authPresent);
                 setIsLoading(false);
             });
     }
 
-    useEffect(() => {
-        //Read cookies status before setting url
-        //---------------------------------------
-        //auth
-        //www.clickenergyni.com/Dashboard/Top-Up.aspx
-        //no auth
-        //www.clickenergyni.com/Dashboard/Summary.aspx
-
-        readStoredCookie();
-
+    setUpView = (authPresent) => {
         let prefix = "";
         if (global.__DEV__) {
             //     prefix = "https://staging.clickenergyni.com";
@@ -100,8 +97,16 @@ export default BrowserHandler = (props) => {
             prefix = "https://www.clickenergyni.com";
         }
         setbaseURl(prefix);
-        setViewSource(`${prefix}/Dashboard/Top-Up.aspx`);
-        
+
+        if (authPresent) {
+            setViewSource(`${prefix}/Dashboard/Top-Up.aspx`);
+        } else {
+            setViewSource(`${prefix}/Dashboard/Summary.aspx`);
+        }
+    }
+
+    useEffect(() => {
+        readStoredCookie();
         BackHandler.addEventListener("hardwareBackPress", handleBackButtonClick);
 
         return cleanUp = () => {
