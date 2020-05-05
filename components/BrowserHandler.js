@@ -43,10 +43,10 @@ export default BrowserHandler = (props) => {
 
     updateCookies = (url) => {
         if (Platform.OS === 'ios') {
-             updateiOSCookies();
+            updateiOSCookies();
         }
         if (Platform.OS === 'android') {
-             updateAndroidCookies(url);
+            updateAndroidCookies(url);
         }
     }
 
@@ -72,7 +72,7 @@ export default BrowserHandler = (props) => {
             await AsyncStorage.removeItem('@auth');
             if (Platform.OS === 'ios') {
                 await CookieManager.clearByName('.ASPXFORMSAUTH');
-            } 
+            }
         }
         if (newSession && newSession !== sessionCookie) {
             setSessionCookie(newSession);
@@ -87,14 +87,13 @@ export default BrowserHandler = (props) => {
                 let authPresent = false;
 
                 for (const cookie of stored) {
-
                     let parsed = JSON.parse(cookie[1]);
 
                     if (parsed?.name === ".ASPXFORMSAUTH" || cookie[0] === "@auth") {
                         setAuthCookie(parsed);
                         authPresent = true;
                     }
-                    if (parsed?.name === "ASP.NET_SessionId" || cookie[0] === "@session") {
+                    if (parsed?.name === "ASP.NET_SessionId" || cookie[0] === "@session"){
                         setSessionCookie(parsed);
                     }
                     if (Platform.OS == 'ios') {
