@@ -38,11 +38,11 @@ export default BrowserHandler = (props) => {
             }
         }
 
-        await updateCookies();
+        updateCookies();
     }
 
     updateCookies = async () => {
-        await CookieManager.getAll(true).then(async (res) => {
+        CookieManager.getAll(true).then(async (res) => {
             let newAuth = res[".ASPXFORMSAUTH"];
             let newSession = res["ASP.NET_SessionId"];
 
@@ -64,7 +64,7 @@ export default BrowserHandler = (props) => {
     }
 
     readStoredCookie = async () => {
-        await AsyncStorage.multiGet(['@auth', '@session'])
+        AsyncStorage.multiGet(['@auth', '@session'])
             .then(async stored => {
 
                 let authPresent = false;
