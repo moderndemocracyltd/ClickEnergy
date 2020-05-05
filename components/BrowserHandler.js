@@ -1,6 +1,6 @@
 
 import React, { useEffect, useState, useRef } from 'react';
-import { BackHandler, Linking, ActivityIndicator } from 'react-native';
+import { BackHandler, Linking, ActivityIndicator, Platform } from 'react-native';
 import { WebView } from 'react-native-webview';
 import CookieManager from '@react-native-community/react-native-cookies';
 import AsyncStorage from '@react-native-community/async-storage';
@@ -38,29 +38,46 @@ export default BrowserHandler = (props) => {
             }
         }
 
-        updateCookies();
+        updateCookies(url);
     }
 
-    updateCookies = async () => {
-        CookieManager.getAll(true).then(async (res) => {
-            let newAuth = res[".ASPXFORMSAUTH"];
-            let newSession = res["ASP.NET_SessionId"];
+    updateCookies = (url) => {
+        if (Platform.OS === 'ios') {
+             updateiOSCookies();
+        }
+        if (Platform.OS === 'android') {
+             updateAndroidCookies(url);
+        }
+    }
 
-            if (newAuth) {
-                if (newAuth !== authCookie) {
-                    setAuthCookie(newAuth);
-                    await AsyncStorage.setItem('@auth', JSON.stringify(newAuth));
-                }
-            } else {
-                await AsyncStorage.removeItem('@auth');
-                await CookieManager.clearByName('.ASPXFORMSAUTH')
-            }
+    updateiOSCookies = () => {
+        CookieManager.getAll(true).then(async (res) => await update(res));
+    }
 
-            if (newSession && newSession !== sessionCookie) {
-                setSessionCookie(newSession);
-                await AsyncStorage.setItem('@session', JSON.stringify(newSession));
+    updateAndroidCookies = (url) => {
+        CookieManager.get(url).then(async (res) => await update(res));
+    }
+
+    update = async (res) => {
+
+        let newAuth = res[".ASPXFORMSAUTH"];
+        let newSession = res["ASP.NET_SessionId"];
+
+        if (newAuth) {
+            if (newAuth !== authCookie) {
+                setAuthCookie(newAuth);
+                await AsyncStorage.setItem('@auth', JSON.stringify(newAuth));
             }
-        });
+        } else {
+            await AsyncStorage.removeItem('@auth');
+            if (Platform.OS === 'ios') {
+                await CookieManager.clearByName('.ASPXFORMSAUTH');
+            } 
+        }
+        if (newSession && newSession !== sessionCookie) {
+            setSessionCookie(newSession);
+            await AsyncStorage.setItem('@session', JSON.stringify(newSession));
+        }
     }
 
     readStoredCookie = async () => {
@@ -73,22 +90,24 @@ export default BrowserHandler = (props) => {
 
                     let parsed = JSON.parse(cookie[1]);
 
-                    if (parsed?.name === ".ASPXFORMSAUTH") {
+                    if (parsed?.name === ".ASPXFORMSAUTH" || cookie[0] === "@auth") {
                         setAuthCookie(parsed);
                         authPresent = true;
                     }
-                    if (parsed?.name === "ASP.NET_SessionId") {
+                    if (parsed?.name === "ASP.NET_SessionId" || cookie[0] === "@session") {
                         setSessionCookie(parsed);
                     }
-                    await CookieManager.set({
-                        name: parsed?.name ? parsed?.name : '',
-                        value: parsed?.value ? parsed?.value : '',
-                        domain: parsed?.domain ? parsed?.domain : '',
-                        origin: parsed?.origin ? parsed?.origin : '',
-                        path: parsed?.path ? parsed?.path : '/',
-                        version: parsed?.version ? parsed?.version : '1',
-                        expiration: parsed?.expiration ? parsed?.expiration : new Date().setHours(new Date().getHours() + 1)
-                    })
+                    if (Platform.OS == 'ios') {
+                        await CookieManager.set({
+                            name: parsed?.name ? parsed?.name : '',
+                            value: parsed?.value ? parsed?.value : '',
+                            domain: parsed?.domain ? parsed?.domain : '',
+                            origin: parsed?.origin ? parsed?.origin : '',
+                            path: parsed?.path ? parsed?.path : '/',
+                            version: parsed?.version ? parsed?.version : '1',
+                            expiration: parsed?.expiration ? parsed?.expiration : new Date().setHours(new Date().getHours() + 1)
+                        })
+                    }
                 }
                 setUpView(authPresent);
                 setIsLoading(false);
