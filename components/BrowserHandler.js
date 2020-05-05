@@ -46,10 +46,16 @@ export default BrowserHandler = (props) => {
             let newAuth = res[".ASPXFORMSAUTH"];
             let newSession = res["ASP.NET_SessionId"];
 
-            if (newAuth && newAuth !== authCookie) {
-                setAuthCookie(newAuth);
-                await AsyncStorage.setItem('@auth', JSON.stringify(newAuth));
+            if (newAuth) {
+                if (newAuth !== authCookie) {
+                    setAuthCookie(newAuth);
+                    await AsyncStorage.setItem('@auth', JSON.stringify(newAuth));
+                }
+            } else {
+                await AsyncStorage.removeItem('@auth');
+                await CookieManager.clearByName('.ASPXFORMSAUTH')
             }
+
             if (newSession && newSession !== sessionCookie) {
                 setSessionCookie(newSession);
                 await AsyncStorage.setItem('@session', JSON.stringify(newSession));
@@ -81,7 +87,7 @@ export default BrowserHandler = (props) => {
                         origin: parsed?.origin ? parsed?.origin : '',
                         path: parsed?.path ? parsed?.path : '/',
                         version: parsed?.version ? parsed?.version : '1',
-                        expiration: parsed?.expiration ? parsed?.expiration : '2050-01-30T12:30:00.00-05:00'
+                        expiration: parsed?.expiration ? parsed?.expiration : new Date().setHours(new Date().getHours() + 1)
                     })
                 }
                 setUpView(authPresent);
@@ -92,8 +98,8 @@ export default BrowserHandler = (props) => {
     setUpView = (authPresent) => {
         let prefix = "";
         if (global.__DEV__) {
-            //     prefix = "https://staging.clickenergyni.com";
-            // } else {
+            prefix = "https://staging.clickenergyni.com";
+        } else {
             prefix = "https://www.clickenergyni.com";
         }
         setbaseURl(prefix);
