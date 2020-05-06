@@ -89,11 +89,12 @@ export default BrowserHandler = (props) => {
                 for (const cookie of stored) {
                     let parsed = JSON.parse(cookie[1]);
 
-                    if (parsed?.name === ".ASPXFORMSAUTH" || cookie[0] === "@auth") {
+                    if (parsed?.name === ".ASPXFORMSAUTH" || (cookie[0] === "@auth" && cookie[1])) {
                         setAuthCookie(parsed);
                         authPresent = true;
+                        console.log(parsed, 'Auth found');
                     }
-                    if (parsed?.name === "ASP.NET_SessionId" || cookie[0] === "@session"){
+                    if (parsed?.name === "ASP.NET_SessionId" || (cookie[0] === "@session" && cookie[1])) {
                         setSessionCookie(parsed);
                     }
                     if (Platform.OS == 'ios') {
@@ -113,7 +114,10 @@ export default BrowserHandler = (props) => {
             });
     }
 
-    setUpView = (authPresent) => {
+    setUpView = async (authPresent) => {
+
+        console.log("authPresent", authPresent);
+
         let prefix = "";
         if (global.__DEV__) {
             prefix = "https://staging.clickenergyni.com";
@@ -122,19 +126,17 @@ export default BrowserHandler = (props) => {
         }
         setbaseURl(prefix);
 
-        if(Platform.OS === 'ios'){
-            if (authPresent) {
-                setViewSource(`${prefix}/Dashboard/Top-Up.aspx`);
-            } else {
-                setViewSource(`${prefix}/Dashboard/Summary.aspx`);
-            }
+        if (authPresent) {
+            setViewSource(`${prefix}/Dashboard/Top-Up.aspx`);
         } else {
-            setViewSource(`${prefix}/Dashboard/Summary.aspx`);
+            await CookieManager.clearAll().then(() => {
+                setViewSource(`${prefix}/Dashboard/Summary.aspx`);
+            })
         }
-
     }
 
     useEffect(() => {
+
         readStoredCookie();
         BackHandler.addEventListener("hardwareBackPress", handleBackButtonClick);
 
