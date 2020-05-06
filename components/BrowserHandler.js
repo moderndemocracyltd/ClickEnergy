@@ -92,7 +92,6 @@ export default BrowserHandler = (props) => {
                     if (parsed?.name === ".ASPXFORMSAUTH" || (cookie[0] === "@auth" && cookie[1])) {
                         setAuthCookie(parsed);
                         authPresent = true;
-                        console.log(parsed, 'Auth found');
                     }
                     if (parsed?.name === "ASP.NET_SessionId" || (cookie[0] === "@session" && cookie[1])) {
                         setSessionCookie(parsed);
@@ -115,8 +114,6 @@ export default BrowserHandler = (props) => {
     }
 
     setUpView = async (authPresent) => {
-
-        console.log("authPresent", authPresent);
 
         let prefix = "";
         if (global.__DEV__) {
