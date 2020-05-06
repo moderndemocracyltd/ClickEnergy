@@ -2,12 +2,6 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
-	<key>NFCReaderUsageDescription</key>
-	<string>Click Energy requires access to NFC to allow you to connect to peripherals such as top up meter.</string>
-	<key>NSBluetoothPeripheralUsageDescription</key>
-	<string>Click Energy requires access to Bluetooth to allow you to connect to peripherals such as top up meter.</string>
-	<key>NSBluetoothAlwaysUsageDescription</key>
-	<string>Click Energy requires access to Bluetooth to allow you to connect to peripherals such as top up meter.</string>
 	<key>CFBundleDevelopmentRegion</key>
 	<string>en</string>
 	<key>CFBundleDisplayName</key>
@@ -23,11 +17,11 @@
 	<key>CFBundlePackageType</key>
 	<string>APPL</string>
 	<key>CFBundleShortVersionString</key>
-	<string>1.0</string>
+	<string>$(MARKETING_VERSION)</string>
 	<key>CFBundleSignature</key>
 	<string>????</string>
 	<key>CFBundleVersion</key>
-	<string>1</string>
+	<string>$(CURRENT_PROJECT_VERSION)</string>
 	<key>LSApplicationQueriesSchemes</key>
 	<array>
 		<string>tel</string>
@@ -36,6 +30,8 @@
 	</array>
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
+	<key>NFCReaderUsageDescription</key>
+	<string>Click Energy requires access to NFC to allow you to connect to peripherals such as top up meter.</string>
 	<key>NSAppTransportSecurity</key>
 	<dict>
 		<key>NSAllowsArbitraryLoads</key>
@@ -49,6 +45,10 @@
 			</dict>
 		</dict>
 	</dict>
+	<key>NSBluetoothAlwaysUsageDescription</key>
+	<string>Click Energy requires access to Bluetooth to allow you to connect to peripherals such as top up meter.</string>
+	<key>NSBluetoothPeripheralUsageDescription</key>
+	<string>Click Energy requires access to Bluetooth to allow you to connect to peripherals such as top up meter.</string>
 	<key>NSLocationWhenInUseUsageDescription</key>
 	<string></string>
 	<key>UILaunchStoryboardName</key>
