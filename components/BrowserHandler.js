@@ -96,7 +96,7 @@ export default BrowserHandler = (props) => {
                     if (parsed?.name === "ASP.NET_SessionId" || (cookie[0] === "@session" && cookie[1])) {
                         setSessionCookie(parsed);
                     }
-                    if (Platform.OS == 'ios') {
+                    if (Platform.OS === 'ios') {
                         await CookieManager.set({
                             name: parsed?.name ? parsed?.name : '',
                             value: parsed?.value ? parsed?.value : '',
