@@ -15,6 +15,17 @@ export default BrowserHandler = (props) => {
     const [authCookie, setAuthCookie] = useState({});
     const [isLoading, setIsLoading] = useState(true);
 
+    handlePostMessage = (event) => {
+        const { data } = event.nativeEvent;
+
+        props.navigation.navigate('Bluetooth', {
+            keyCode: data
+        });
+        //Handle Event
+        //Get Top Up code from event.nativeEvent.data
+        //Pass to Bluetooth handler
+    }
+
     handleBackButtonClick = () => {
         WEBVIEW_REF.current.goBack();
         return true;
@@ -36,6 +47,14 @@ export default BrowserHandler = (props) => {
             } else {
                 alert(`Can't open link: ${url}`);
             }
+        }
+
+        if (url.includes(baseURL) && url.includes("Payment-Success")) {
+            WEBVIEW_REF.current.injectJavaScript(`
+                let topUpCode = document.getElementById("");
+                window.ReactNativeWebView.postMessage(000004620013459827369);
+                true;
+            `);
         }
 
         updateCookies(url);
@@ -167,6 +186,7 @@ export default BrowserHandler = (props) => {
                     useWebKit={true}
                     source={{ uri: viewSource, }}
                     onNavigationStateChange={handleNavigationChange}
+                    onMessage={handlePostMessage}
                     allowsBackForwardNavigationGestures={true}
                     bounces={false}
                     cacheEnabled={true}

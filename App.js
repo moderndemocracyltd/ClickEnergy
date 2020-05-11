@@ -9,6 +9,7 @@ import { NavigationContainer } from '@react-navigation/native';
 import { createStackNavigator } from '@react-navigation/stack';
 
 import BrowserHandler from "./components/BrowserHandler";
+import BluetoothHandler from "./components/BluetoothHandler";
 
 const Stack = createStackNavigator();
 
@@ -30,6 +31,11 @@ const App = () => {
           <Stack.Screen
             name="Browser"
             component={BrowserHandler}
+          />
+
+          <Stack.Screen
+            name="Bluetooth"
+            component={BluetoothHandler}
           />
         </Stack.Navigator>
       </NavigationContainer>
