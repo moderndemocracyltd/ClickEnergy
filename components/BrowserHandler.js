@@ -15,23 +15,22 @@ export default BrowserHandler = (props) => {
     const [authCookie, setAuthCookie] = useState({});
     const [isLoading, setIsLoading] = useState(true);
 
-    handlePostMessage = (event) => {
+    const handlePostMessage = (event) => {
         const { data } = event.nativeEvent;
 
         props.navigation.navigate('Bluetooth', {
             keyCode: data
         });
-        //Handle Event
         //Get Top Up code from event.nativeEvent.data
         //Pass to Bluetooth handler
     }
 
-    handleBackButtonClick = () => {
+    const handleBackButtonClick = () => {
         WEBVIEW_REF.current.goBack();
         return true;
     }
 
-    handleNavigationChange = async newNavState => {
+    const handleNavigationChange = async newNavState => {
         const { url, title } = newNavState;
 
         if (title === "about:blank") {
@@ -51,7 +50,6 @@ export default BrowserHandler = (props) => {
 
         if (url.includes(baseURL) && url.includes("Payment-Success")) {
             WEBVIEW_REF.current.injectJavaScript(`
-                let topUpCode = document.getElementById("");
                 window.ReactNativeWebView.postMessage(000004620013459827369);
                 true;
             `);
@@ -60,24 +58,16 @@ export default BrowserHandler = (props) => {
         updateCookies(url);
     }
 
-    updateCookies = (url) => {
+    const updateCookies = (url) => {
         if (Platform.OS === 'ios') {
-            updateiOSCookies();
+            CookieManager.getAll(true).then(async (res) => await update(res));
         }
         if (Platform.OS === 'android') {
-            updateAndroidCookies(url);
+            CookieManager.get(url).then(async (res) => await update(res));
         }
     }
 
-    updateiOSCookies = () => {
-        CookieManager.getAll(true).then(async (res) => await update(res));
-    }
-
-    updateAndroidCookies = (url) => {
-        CookieManager.get(url).then(async (res) => await update(res));
-    }
-
-    update = async (res) => {
+    const update = async (res) => {
 
         let newAuth = res[".ASPXFORMSAUTH"];
         let newSession = res["ASP.NET_SessionId"];
@@ -99,7 +89,7 @@ export default BrowserHandler = (props) => {
         }
     }
 
-    readStoredCookie = async () => {
+    const readStoredCookie = async () => {
         AsyncStorage.multiGet(['@auth', '@session'])
             .then(async stored => {
 
@@ -132,7 +122,7 @@ export default BrowserHandler = (props) => {
             });
     }
 
-    setUpView = async (authPresent) => {
+    const setUpView = async (authPresent) => {
 
         let prefix = "";
         if (global.__DEV__) {
