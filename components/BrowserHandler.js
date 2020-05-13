@@ -142,16 +142,13 @@ export default BrowserHandler = (props) => {
     }
 
     useEffect(() => {
-
         readStoredCookie();
         BackHandler.addEventListener("hardwareBackPress", handleBackButtonClick);
 
         return cleanUp = () => {
-            BackHandler.removeEventListener("hardwareBackPress", handleBackButtonClick);
+            BackHandler.removeEventListener("hardwareBackPress");
         }
-    },
-        []
-    );
+    },[]);
 
     return (
         <>

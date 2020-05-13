@@ -6,12 +6,8 @@ import {
     TouchableHighlight,
     NativeEventEmitter,
     NativeModules,
-    Platform,
-    PermissionsAndroid,
-    ScrollView,
     AppState,
     FlatList,
-    Dimensions,
     Button,
     SafeAreaView
 } from "react-native";
@@ -106,7 +102,7 @@ export default BluetoothHandler = (props) => {
         BleManager.connect(peripheral.id)
             .then(() => {
                 let local = peripherals;
-                let device = peripherals.get(peripheral.id);
+                let device = local.get(peripheral.id);
 
                 if (device) {
                     device.connected = true;
@@ -171,21 +167,20 @@ export default BluetoothHandler = (props) => {
 
     useEffect(() => {
         AppState.addEventListener("change", handleAppStateChange);
+        bleManagerEmitter.addListener("BleManagerStopScan", handleStopScan);
+        bleManagerEmitter.addListener("BleManagerDiscoverPeripheral", handleDiscoverPeripheral);
+        bleManagerEmitter.addListener("BleManagerDisconnectPeripheral", handleDisconnectedPeripheral);
+        bleManagerEmitter.addListener("BleManagerDidUpdateValueForCharacteristic", handleUpdateValueForCharacteristic);
         BleManager.start({ showAlert: false });
-        this.handlerDiscover = bleManagerEmitter.addListener("BleManagerDiscoverPeripheral", handleDiscoverPeripheral);
-        this.handlerStop = bleManagerEmitter.addListener("BleManagerStopScan", handleStopScan);
-        this.handlerDisconnect = bleManagerEmitter.addListener("BleManagerDisconnectPeripheral", handleDisconnectedPeripheral);
-        this.handlerUpdate = bleManagerEmitter.addListener("BleManagerDidUpdateValueForCharacteristic", handleUpdateValueForCharacteristic);
 
         return cleanUp = () => {
-            this.handlerDiscover.remove();
-            this.handlerStop.remove();
-            this.handlerDisconnect.remove();
-            this.handlerUpdate.remove();
+            AppState.removeEventListener("change");
+            bleManagerEmitter.removeListener("BleManagerStopScan");
+            bleManagerEmitter.removeListener("BleManagerDiscoverPeripheral");
+            bleManagerEmitter.removeListener("BleManagerDisconnectPeripheral");
+            bleManagerEmitter.removeListener("BleManagerDidUpdateValueForCharacteristic");
         }
-    },
-        []
-    )
+    }, []);
 
     const list = Array.from(peripherals.values());
     const btnScanTitle = `Scan Bluetooth (${scanning ? "on" : "off"})`;
@@ -201,17 +196,17 @@ export default BluetoothHandler = (props) => {
                     <Button title="Retrieve connected peripherals" onPress={() => retrieveConnected()} />
                 </View>
 
-                {(list.length == 0) &&
-                    <View style={{ flex: 1, margin: 20 }}>
-                        <Text style={{ textAlign: 'center' }}>No peripherals</Text>
-                    </View>
-                }
-                {list.length > 0 &&
+                {list.length > 0 ?
                     <FlatList
                         data={list}
                         renderItem={({ item }) => renderItem(item)}
                         keyExtractor={item => item.id}
-                    />}
+                    />
+                    :
+                    <View style={{ flex: 1, margin: 20 }}>
+                        <Text style={{ textAlign: 'center' }}>No peripherals</Text>
+                    </View>
+                }
             </View>
         </SafeAreaView>
     )
