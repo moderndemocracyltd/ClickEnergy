@@ -125,7 +125,7 @@ export default BrowserHandler = (props) => {
         setbaseURl(prefix);
 
         if (authPresent) {
-            setViewSource(`${prefix}/Dashboard/Top-Up.aspx`);
+            setViewSource(`${prefix}/Dashboard/Summary.aspx`);
         } else {
             await CookieManager.clearAll().then(() => {
                 setViewSource(`${prefix}/Dashboard/Summary.aspx`);
