@@ -29,7 +29,7 @@ export default BrowserHandler = (props) => {
         }
 
         if (url.includes("facebook") 
-            || url.includes("twitter") 
+            || url.includes("twitter")
             || url.includes("youtube")
             || url.includes("zopim")) {
             WEBVIEW_REF.current.stopLoading();
@@ -177,6 +177,7 @@ export default BrowserHandler = (props) => {
                     cacheMode={"LOAD_DEFAULT"}
                     sharedCookiesEnabled={true}
                     thirdPartyCookiesEnabled={true}
+                    originWhitelist={['*']}
                 />
             }
         </>
