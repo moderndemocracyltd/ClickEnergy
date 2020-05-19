@@ -28,7 +28,10 @@ export default BrowserHandler = (props) => {
             return;
         }
 
-        if (!url.includes(baseURL) && !url.includes("judopay")) {
+        if (url.includes("facebook") 
+            || url.includes("twitter") 
+            || url.includes("youtube")
+            || url.includes("zopim")) {
             WEBVIEW_REF.current.stopLoading();
             WEBVIEW_REF.current.goBack();
             const supported = await Linking.canOpenURL(url);
