@@ -1,6 +1,6 @@
 
 import React, { useEffect, useState, useRef } from 'react';
-import { BackHandler, Linking, ActivityIndicator, Platform } from 'react-native';
+import { BackHandler, Linking, ActivityIndicator, Platform, Alert } from 'react-native';
 import { WebView } from 'react-native-webview';
 import CookieManager from '@react-native-community/react-native-cookies';
 import AsyncStorage from '@react-native-community/async-storage';
@@ -15,12 +15,22 @@ export default BrowserHandler = (props) => {
     const [authCookie, setAuthCookie] = useState({});
     const [isLoading, setIsLoading] = useState(true);
 
-    handleBackButtonClick = () => {
+    const displayError = () => {
+        Alert.alert(
+            "Error",
+            "An error has occured. Tap OK to go back",
+            [
+                { text: 'OK', onPress: () => WEBVIEW_REF.current.goBack() },
+            ],
+            { cancelable: false });
+    }
+
+    const handleBackButtonClick = () => {
         WEBVIEW_REF.current.goBack();
         return true;
     }
 
-    handleNavigationChange = async newNavState => {
+    const handleNavigationChange = async newNavState => {
         const { url, title } = newNavState;
 
         if (title === "about:blank") {
@@ -28,7 +38,7 @@ export default BrowserHandler = (props) => {
             return;
         }
 
-        if (url.includes("facebook") 
+        if (url.includes("facebook")
             || url.includes("twitter")
             || url.includes("youtube")
             || url.includes("zopim")) {
@@ -45,7 +55,7 @@ export default BrowserHandler = (props) => {
         updateCookies(url);
     }
 
-    updateCookies = (url) => {
+    const updateCookies = (url) => {
         if (Platform.OS === 'ios') {
             updateiOSCookies();
         }
@@ -54,15 +64,15 @@ export default BrowserHandler = (props) => {
         }
     }
 
-    updateiOSCookies = () => {
+    const updateiOSCookies = () => {
         CookieManager.getAll(true).then(async (res) => await update(res));
     }
 
-    updateAndroidCookies = (url) => {
+    const updateAndroidCookies = (url) => {
         CookieManager.get(url).then(async (res) => await update(res));
     }
 
-    update = async (res) => {
+    const update = async (res) => {
 
         let newAuth = res[".ASPXFORMSAUTH"];
         let newSession = res["ASP.NET_SessionId"];
@@ -84,7 +94,7 @@ export default BrowserHandler = (props) => {
         }
     }
 
-    readStoredCookie = async () => {
+    const readStoredCookie = async () => {
         AsyncStorage.multiGet(['@auth', '@session'])
             .then(async stored => {
 
@@ -117,12 +127,12 @@ export default BrowserHandler = (props) => {
             });
     }
 
-    setUpView = async (authPresent) => {
+    const setUpView = async (authPresent) => {
 
         let prefix = "";
         if (global.__DEV__) {
-            prefix = "https://staging.clickenergyni.com";
-        } else {
+                prefix = "https://staging.clickenergyni.com";
+            } else {
             prefix = "https://www.clickenergyni.com";
         }
         setbaseURl(prefix);
@@ -167,17 +177,18 @@ export default BrowserHandler = (props) => {
             }
             {!isLoading &&
                 <WebView
-                    ref={WEBVIEW_REF}
-                    useWebKit={true}
+                    ref={ WEBVIEW_REF }
+                    useWebKit={ true }
                     source={{ uri: viewSource, }}
-                    onNavigationStateChange={handleNavigationChange}
-                    allowsBackForwardNavigationGestures={true}
-                    bounces={false}
-                    cacheEnabled={true}
-                    cacheMode={"LOAD_DEFAULT"}
-                    sharedCookiesEnabled={true}
-                    thirdPartyCookiesEnabled={true}
+                    onNavigationStateChange={ handleNavigationChange }
+                    allowsBackForwardNavigationGestures={ true }
+                    bounces={ false }
+                    cacheEnabled={ true }
+                    cacheMode={ "LOAD_DEFAULT" }
+                    sharedCookiesEnabled={ true }
+                    thirdPartyCookiesEnabled={ true }
                     originWhitelist={['*']}
+                    onError={ displayError }
                 />
             }
         </>
