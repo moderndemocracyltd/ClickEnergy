@@ -15,7 +15,7 @@ import BleManager from "react-native-ble-manager";
 
 export default BluetoothHandler = (props) => {
 
-    const KEY_CODE = props?.route?.params?.keyCode ? props.route.params.keyCode : null;
+    const KEY_CODE = props?.route?.params?.keyCode || null;
 
     const BleManagerModule = NativeModules.BleManager;
     const bleManagerEmitter = new NativeEventEmitter(BleManagerModule);

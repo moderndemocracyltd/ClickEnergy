@@ -48,7 +48,12 @@ export default BrowserHandler = (props) => {
             }
         }
 
+        //If user tops up and payment is successful
         if (url.includes(baseURL) && url.includes("Payment-Success")) {
+            // Inject javascript into page
+            // window.ReactNativeWebView.postMessage(document.getElementByClassName("TopUpCodeTextpTag"));
+            // postMessage will trigger onMessage handler (handlePostMessage) within ReactNative with the top up code
+            
             WEBVIEW_REF.current.injectJavaScript(`
                 window.ReactNativeWebView.postMessage(000004620013459827369);
                 true;
