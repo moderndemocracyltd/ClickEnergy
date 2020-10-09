@@ -5,73 +5,81 @@ import StorageService from './LocalStorageService';
 class CookieService {
 
     constructor() {
-        this.manager = new CookieManager()
+        this.manager = CookieManager
+        this.store = StorageService
         this.authCookie = null;
         this.sessionCookie = null;
-        this.AUTH_KEY_NAME = ".ASPXFORMSAUTH";
-        this.SESSION_KEY_NAME = "ASP.NET_SessionId";
+
+        this.AUTH_KEY = ".ASPXFORMSAUTH";
+        this.SESSION_KEY = "ASP.NET_SessionId";
+    }
+
+    getAuthCookie = async () => {
+        return this.authCookie
     }
 
     loadStoredCookies = async () => {
         return new Promise((resolve, reject) => {
-            StorageService
-                .getMultipleValues([AUTH_KEY_NAME, SESSION_KEY_NAME])
+            this.store.getMultipleValues([this.AUTH_KEY, this.SESSION_KEY])
                 .then(async stored => {
 
                     let authPresent = false;
 
                     for (const cookie of stored) {
+
+                        const cookieKey = cookie[0];
                         const parsed = JSON.parse(cookie[1]);
 
-                        if (parsed?.name === AUTH_KEY_NAME || (cookie[0] === AUTH_KEY_NAME && cookie[1])) {
+                        console.log("Parsed", parsed);
+
+                        if (cookieKey === this.AUTH_KEY && parsed !== this.authCookie) {
                             this.authCookie = parsed;
                             authPresent = true;
-                        }
-                        if (parsed?.name === SESSION_KEY_NAME || (cookie[0] === SESSION_KEY_NAME && cookie[1])) {
-                            this.sessionCookie = parsed;
+                            console.log("auth updated", this.authCookie);
                         }
 
-                        if (Platform.OS === 'ios') {
-                            await CookieManager.set({
-                                name: parsed?.name || '',
-                                value: parsed?.value || '',
-                                domain: parsed?.domain || '',
-                                origin: parsed?.origin || '',
-                                path: parsed?.path || '/',
-                                version: parsed?.version || '1',
-                                expiration: parsed?.expiration || new Date().setHours(new Date().getHours() + 1)
-                            })
+                        if (cookieKey === this.SESSION_KEY && parsed !== this.sessionCookie) {
+                            this.sessionCookie = parsed;
+                            console.log("session updated", this.sessionCookie);
                         }
-                        resolve(authPresent);
+
+                        if (parsed) {
+                            const newcookie = {
+                                name: cookieKey,
+                                value: parsed,
+                                domain: '',
+                                path: '/',
+                                version: '1',
+                                origin: '',
+                                expiration: new Date().setHours(new Date().getHours() + 1)
+                            }
+                            console.log("cookie", newcookie);
+                            await this.manager.set(newcookie);
+                        }
                     }
+                    resolve(authPresent)
                 }).catch(error => reject(error));
         });
     }
 
     updateCookies = async (url) => {
         return new Promise((resolve, reject) => {
-            CookieManager
-                .get(url, true)
+            this.manager.get(url, true)
                 .then(async (response) => {
+                    console.log(url);
+                    const newAuth = response[this.AUTH_KEY];
+                    const newSession = response[this.SESSION_KEY];
 
-                    const newAuth = response[AUTH_KEY_NAME];
-                    const newSession = response[SESSION_KEY_NAME];
+                    console.log("newAuth", newAuth);
+                    console.log("newSession", newSession)
 
-                    if (newAuth) {
-                        if (newAuth !== this.authCookie) {
-                            this.authCookie = newAuth;
-                            await StorageService.setValue(AUTH_KEY_NAME, newAuth);
-                        }
-                    } else {
-                        await StorageService.removeValue(AUTH_KEY_NAME);
-                        if (Platform.OS === 'ios') {
-                            await CookieManager.clearByName(AUTH_KEY_NAME);
-                        }
+                    if (newAuth && newAuth !== this.authCookie) {
+                        this.authCookie = newAuth;
+                        await this.store.setValue(this.AUTH_KEY, newAuth);
                     }
-
                     if (newSession && newSession !== this.sessionCookie) {
                         this.sessionCookie = newSession;
-                        await StorageService.setItem(SESSION_KEY_NAME, newSession);
+                        await this.store.setValue(this.SESSION_KEY, newSession);
                     }
                     resolve();
                 })
@@ -80,9 +88,9 @@ class CookieService {
     }
 
     clearCookies = async () => {
-        return await CookieManager.clearAll();
+        return await this.manager.clearAll();
     }
 }
 
-const CookieService = new CookieService();
-export default CookieService
+const cookieService = new CookieService();
+export default cookieService

@@ -3,9 +3,9 @@ import AsyncStorage from '@react-native-community/async-storage';
 //Simple Key:Value store for React Native used to store
 //and persist important cookies intercepted by the webview
 
-class StorageHandler {
+class StorageService {
     constructor() {
-        this.store = new AsyncStorage()
+        this.store = AsyncStorage
     }
 
     getValue = async (key) => {
@@ -44,5 +44,5 @@ class StorageHandler {
     }
 }
 
-const StorageService = new StorageHandler();
-export default StorageService;
+const storageService = new StorageService();
+export default storageService;
