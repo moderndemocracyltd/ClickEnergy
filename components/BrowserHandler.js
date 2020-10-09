@@ -16,8 +16,27 @@ export default BrowserHandler = (props) => {
         props.navigation.navigate('Bluetooth', {
             keyCode: data
         });
-        //Get Top Up code from event.nativeEvent.data
-        //Pass to Bluetooth handler
+    }
+
+    const displayError = () => {
+        Alert.alert("Error", "An error has occured. Tap OK to go back",
+            [{
+                text: 'OK',
+                onPress: () => WEBVIEW_REF.current.goBack()
+            }],
+            { cancelable: false }
+        );
+    }
+
+    const openLinkExternally = async (url) => {
+        WEBVIEW_REF.current.stopLoading();
+        WEBVIEW_REF.current.goBack();
+        const supported = await Linking.canOpenURL(url);
+        if (supported) {
+            await Linking.openURL(url);
+        } else {
+            alert(`Can't open link: ${url}`);
+        }
     }
 
     const handleBackButtonClick = () => {
@@ -32,38 +51,26 @@ export default BrowserHandler = (props) => {
             WEBVIEW_REF.current.goForward();
             return;
         }
-
         if (!url.includes(baseURL) && !url.includes("judopay")) {
-            WEBVIEW_REF.current.stopLoading();
-            const supported = await Linking.canOpenURL(url);
-            if (supported) {
-                await Linking.openURL(url);
-            } else {
-                alert(`Can't open link: ${url}`);
-            }
+            openLinkExternally(url);
         }
 
-        //If user tops up and payment is successful
         if (url.includes(baseURL) && url.includes("Payment-Success")) {
-            // Inject javascript into page
-            //      window.ReactNativeWebView.postMessage(document.getElementByClassName("TopUpCodeText <p>Tag"));
-            // postMessage will trigger onMessage handler (handlePostMessage) within ReactNative with the top up code
-            WEBVIEW_REF.current.injectJavaScript(`
-                let topUpCode = document.getElementById("TopUpCodePTag").innerHTML;
-                window.ReactNativeWebView.postMessage(topUpCode);
-                true;
-            `);
+            // WEBVIEW_REF.current.injectJavaScript(`
+            //     let topUpCode = document.getElementById("TopUpCodePTag").innerHTML;
+            //     window.ReactNativeWebView.postMessage(topUpCode);
+            //     true;
+            // `);
         }
-
         await CookieService.updateCookies(url);
     }
 
-    const setUpView = async (authPresent) => {
-
+    const setUpView = async () => {
         const prefix = global.__DEV__ ? "staging" : "www";
         const url = `https://${prefix}.clickenergyni.com`;
         setbaseURl(url);
 
+        const authPresent = await CookieService.loadStoredCookies(url)
         if (authPresent) {
             setViewSource(`${url}/Dashboard/Top-Up.aspx`);
         } else {
@@ -71,14 +78,12 @@ export default BrowserHandler = (props) => {
                 setViewSource(`${url}/Dashboard/Summary.aspx`)
             });
         }
+
+        setIsLoading(false);
     }
 
     useEffect(() => {
-        CookieService.loadStoredCookies().then(authKeyPresent => {
-            setUpView(authKeyPresent);
-            setIsLoading(false);
-        });
-
+        setUpView()
         BackHandler.addEventListener("hardwareBackPress", handleBackButtonClick);
 
         return cleanUp = () => {
@@ -107,15 +112,17 @@ export default BrowserHandler = (props) => {
                 <WebView
                     ref={WEBVIEW_REF}
                     useWebKit={true}
-                    source={{ uri: viewSource, }}
-                    onNavigationStateChange={handleNavigationChange}
-                    onMessage={handlePostMessage}
-                    allowsBackForwardNavigationGestures={true}
+                    source={{ uri: viewSource }}
                     bounces={false}
                     cacheEnabled={true}
+                    originWhitelist={['*']}
                     cacheMode={"LOAD_DEFAULT"}
                     sharedCookiesEnabled={true}
                     thirdPartyCookiesEnabled={true}
+                    allowsBackForwardNavigationGestures={true}
+                    onError={displayError}
+                    onMessage={handlePostMessage}
+                    onNavigationStateChange={handleNavigationChange}
                 />
             }
         </>
