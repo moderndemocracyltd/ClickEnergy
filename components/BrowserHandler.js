@@ -62,7 +62,7 @@ export default BrowserHandler = (props) => {
             //     true;
             // `);
         }
-        await CookieService.updateCookies(url);
+        await CookieService.saveCookies(url);
     }
 
     const setUpView = async () => {

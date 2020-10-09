@@ -37,12 +37,13 @@ class CookieService {
                             await this.manager.setFromResponse(url, headers)
                         }
                     }
+
                     resolve(authPresent)
                 }).catch(error => reject(error));
         });
     }
 
-    updateCookies = async (url) => {
+    saveCookies = async (url) => {
         return new Promise((resolve, reject) => {
             this.manager.get(url, true)
                 .then(async (response) => {
