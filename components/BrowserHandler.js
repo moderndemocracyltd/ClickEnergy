@@ -1,23 +1,18 @@
 
 import React, { useEffect, useState, useRef } from 'react';
-import { BackHandler, Linking, ActivityIndicator, Platform } from 'react-native';
+import { BackHandler, Linking, ActivityIndicator } from 'react-native';
 import { WebView } from 'react-native-webview';
-import CookieManager from '@react-native-community/react-native-cookies';
-import AsyncStorage from '@react-native-community/async-storage';
+import CookieService from '../Services/CookieService';
 
 export default BrowserHandler = (props) => {
 
     const WEBVIEW_REF = useRef();
-
     const [baseURL, setbaseURl] = useState("");
     const [viewSource, setViewSource] = useState("");
-    const [sessionCookie, setSessionCookie] = useState({});
-    const [authCookie, setAuthCookie] = useState({});
     const [isLoading, setIsLoading] = useState(true);
 
     const handlePostMessage = (event) => {
         const { data } = event.nativeEvent;
-
         props.navigation.navigate('Bluetooth', {
             keyCode: data
         });
@@ -51,109 +46,45 @@ export default BrowserHandler = (props) => {
         //If user tops up and payment is successful
         if (url.includes(baseURL) && url.includes("Payment-Success")) {
             // Inject javascript into page
-            // window.ReactNativeWebView.postMessage(document.getElementByClassName("TopUpCodeTextpTag"));
+            //      window.ReactNativeWebView.postMessage(document.getElementByClassName("TopUpCodeText <p>Tag"));
             // postMessage will trigger onMessage handler (handlePostMessage) within ReactNative with the top up code
-            
             WEBVIEW_REF.current.injectJavaScript(`
-                window.ReactNativeWebView.postMessage(000004620013459827369);
+                let topUpCode = document.getElementById("TopUpCodePTag").innerHTML;
+                window.ReactNativeWebView.postMessage(topUpCode);
                 true;
             `);
         }
 
-        updateCookies(url);
-    }
-
-    const updateCookies = (url) => {
-        if (Platform.OS === 'ios') {
-            CookieManager.getAll(true).then(async (res) => await update(res));
-        }
-        if (Platform.OS === 'android') {
-            CookieManager.get(url).then(async (res) => await update(res));
-        }
-    }
-
-    const update = async (res) => {
-
-        let newAuth = res[".ASPXFORMSAUTH"];
-        let newSession = res["ASP.NET_SessionId"];
-
-        if (newAuth) {
-            if (newAuth !== authCookie) {
-                setAuthCookie(newAuth);
-                await AsyncStorage.setItem('@auth', JSON.stringify(newAuth));
-            }
-        } else {
-            await AsyncStorage.removeItem('@auth');
-            if (Platform.OS === 'ios') {
-                await CookieManager.clearByName('.ASPXFORMSAUTH');
-            }
-        }
-        if (newSession && newSession !== sessionCookie) {
-            setSessionCookie(newSession);
-            await AsyncStorage.setItem('@session', JSON.stringify(newSession));
-        }
-    }
-
-    const readStoredCookie = async () => {
-        AsyncStorage.multiGet(['@auth', '@session'])
-            .then(async stored => {
-
-                let authPresent = false;
-
-                for (const cookie of stored) {
-                    let parsed = JSON.parse(cookie[1]);
-
-                    if (parsed?.name === ".ASPXFORMSAUTH" || (cookie[0] === "@auth" && cookie[1])) {
-                        setAuthCookie(parsed);
-                        authPresent = true;
-                    }
-                    if (parsed?.name === "ASP.NET_SessionId" || (cookie[0] === "@session" && cookie[1])) {
-                        setSessionCookie(parsed);
-                    }
-                    if (Platform.OS === 'ios') {
-                        await CookieManager.set({
-                            name: parsed?.name ? parsed?.name : '',
-                            value: parsed?.value ? parsed?.value : '',
-                            domain: parsed?.domain ? parsed?.domain : '',
-                            origin: parsed?.origin ? parsed?.origin : '',
-                            path: parsed?.path ? parsed?.path : '/',
-                            version: parsed?.version ? parsed?.version : '1',
-                            expiration: parsed?.expiration ? parsed?.expiration : new Date().setHours(new Date().getHours() + 1)
-                        })
-                    }
-                }
-                setUpView(authPresent);
-                setIsLoading(false);
-            });
+        await CookieService.updateCookies(url);
     }
 
     const setUpView = async (authPresent) => {
 
-        let prefix = "";
-        if (global.__DEV__) {
-            prefix = "https://staging.clickenergyni.com";
-        } else {
-            prefix = "https://www.clickenergyni.com";
-        }
-        setbaseURl(prefix);
+        const prefix = global.__DEV__ ? "staging" : "www";
+        const url = `https://${prefix}.clickenergyni.com`;
+        setbaseURl(url);
 
         if (authPresent) {
-            setViewSource(`${prefix}/Dashboard/Top-Up.aspx`);
+            setViewSource(`${url}/Dashboard/Top-Up.aspx`);
         } else {
-            await CookieManager.clearAll().then(() => {
-                setViewSource(`${prefix}/Dashboard/Summary.aspx`);
-            })
+            await CookieService.clearCookies().then(() => {
+                setViewSource(`${url}/Dashboard/Summary.aspx`)
+            });
         }
     }
 
     useEffect(() => {
-        readStoredCookie();
+        CookieService.loadStoredCookies().then(authKeyPresent => {
+            setUpView(authKeyPresent);
+            setIsLoading(false);
+        });
+
         BackHandler.addEventListener("hardwareBackPress", handleBackButtonClick);
 
         return cleanUp = () => {
             BackHandler.removeEventListener("hardwareBackPress");
         }
-    },[]);
+    }, []);
 
     return (
         <>
