@@ -39,7 +39,7 @@ export default BrowserHandler = (props) => {
 
         setIsLoading(false);
     }
-
+    
     const handleBackButtonClick = () => {
         WEBVIEW_REF.current.goBack();
         return true;
@@ -86,8 +86,7 @@ export default BrowserHandler = (props) => {
         if (url.includes(baseURL) && url.includes("Top-Up")) {
 
             setModalVisible(true);
-
-
+          
             // WEBVIEW_REF.current.injectJavaScript(patchPostMessageJsCode);
             // const js = `(function(){
             //     window.ReactNativeWebView.postMessage("HEllO");
