@@ -11,59 +11,14 @@ export default BrowserHandler = (props) => {
     const [viewSource, setViewSource] = useState("");
     const [isLoading, setIsLoading] = useState(true);
 
-    const handlePostMessage = (event) => {
-        const { data } = event.nativeEvent;
-        props.navigation.navigate('Bluetooth', {
-            keyCode: data
-        });
-    }
+    useEffect(() => {
+        setUpView()
+        BackHandler.addEventListener("hardwareBackPress", handleBackButtonClick);
 
-    const displayError = () => {
-        Alert.alert("Error", "An error has occured. Tap OK to go back",
-            [{
-                text: 'OK',
-                onPress: () => WEBVIEW_REF.current.goBack()
-            }],
-            { cancelable: false }
-        );
-    }
-
-    const openLinkExternally = async (url) => {
-        WEBVIEW_REF.current.stopLoading();
-        WEBVIEW_REF.current.goBack();
-        const supported = await Linking.canOpenURL(url);
-        if (supported) {
-            await Linking.openURL(url);
-        } else {
-            alert(`Can't open link: ${url}`);
+        return cleanUp = () => {
+            BackHandler.removeEventListener("hardwareBackPress");
         }
-    }
-
-    const handleBackButtonClick = () => {
-        WEBVIEW_REF.current.goBack();
-        return true;
-    }
-
-    const handleNavigationChange = async newNavState => {
-        const { url, title } = newNavState;
-
-        if (title === "about:blank") {
-            WEBVIEW_REF.current.goForward();
-            return;
-        }
-        if (!url.includes(baseURL) && !url.includes("judopay")) {
-            openLinkExternally(url);
-        }
-
-        if (url.includes(baseURL) && url.includes("Payment-Success")) {
-            // WEBVIEW_REF.current.injectJavaScript(`
-            //     let topUpCode = document.getElementById("TopUpCodePTag").innerHTML;
-            //     window.ReactNativeWebView.postMessage(topUpCode);
-            //     true;
-            // `);
-        }
-        await CookieService.saveCookies(url);
-    }
+    }, []);
 
     const setUpView = async () => {
         const prefix = global.__DEV__ ? "staging" : "www";
@@ -82,29 +37,65 @@ export default BrowserHandler = (props) => {
         setIsLoading(false);
     }
 
-    useEffect(() => {
-        setUpView()
-        BackHandler.addEventListener("hardwareBackPress", handleBackButtonClick);
+    const handleBackButtonClick = () => {
+        WEBVIEW_REF.current.goBack();
+        return true;
+    }
 
-        return cleanUp = () => {
-            BackHandler.removeEventListener("hardwareBackPress");
+    const handlePostMessage = event => {
+        const { data } = event.nativeEvent;
+        props.navigation.navigate('Bluetooth', {
+            keyCode: data
+        });
+    }
+
+    const displayError = () => {
+        Alert.alert("Error", "An error has occured. Tap OK to go back",
+            [{
+                text: 'OK',
+                onPress: () => WEBVIEW_REF.current.goBack()
+            }],
+            { cancelable: false }
+        );
+    }
+
+    const openLinkExternally = async url => {
+        WEBVIEW_REF.current.stopLoading();
+        WEBVIEW_REF.current.goBack();
+        const supported = await Linking.canOpenURL(url);
+        if (supported) {
+            await Linking.openURL(url);
+        } else {
+            alert(`Can't open link: ${url}`);
         }
-    }, []);
+    }
+
+    const handleNavigationChange = async newNavState => {
+        const { url, title } = newNavState;
+
+        if (title === "about:blank") {
+            WEBVIEW_REF.current.goForward();
+            return;
+        }
+        if (!url.includes(baseURL) && !url.includes("judopay")) {
+            await openLinkExternally(url);
+        }
+
+        if (url.includes(baseURL) && url.includes("Payment-Success")) {
+            // WEBVIEW_REF.current.injectJavaScript(`
+            //     let topUpCode = document.getElementById("TopUpCodePTag").innerHTML;
+            //     window.ReactNativeWebView.postMessage(topUpCode);
+            //     true;
+            // `);
+        }
+        await CookieService.saveCookies(url);
+    }
 
     return (
         <>
             {isLoading &&
                 <ActivityIndicator
-                    style={{
-                        flex: 1,
-                        left: 0,
-                        right: 0,
-                        top: 0,
-                        bottom: 0,
-                        position: 'absolute',
-                        alignItems: 'center',
-                        justifyContent: 'center'
-                    }}
+                    style={{ position: 'absolute', left: 0, right: 0, bottom: 0, top: 0, }}
                     size="large"
                 />
             }

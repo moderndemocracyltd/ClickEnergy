@@ -8,39 +8,45 @@ class StorageService {
         this.store = AsyncStorage
     }
 
-    getValue = async (key) => {
-        return new Promise((resolve, reject) => {
-            this.store
-                .getItem(key)
-                .then(response => resolve(JSON.parse(response)))
-                .catch(error => reject(error));
-        });
+    getValue = async key => {
+        try {
+            const response = await this.store.getItem(key);
+            const parsed = JSON.parse(response);
+            return parsed
+        }
+        catch (error) {
+            console.error("Error getting value:", error);
+        }
     }
 
     setValue = async (key, value) => {
-        return new Promise((resolve, reject) => {
-            this.store
-                .setItem(key, JSON.stringify(value))
-                .then(() => resolve())
-                .catch(error => reject(error));
-        });
+        try {
+            const promise = await this.store.setItem(key, JSON.stringify(value));
+            return promise;
+        }
+        catch (error) {
+            console.error("Error setting value:", error);
+        }
     }
 
-    getMultipleValues = async (keys) => {
-        return new Promise((resolve, reject) => {
-            this.store
-                .multiGet([...keys])
-                .then(values => resolve(values))
-                .catch(error => reject(error))
-        })
+    getMultipleValues = async keys => {
+        try {
+            const values = await this.store.multiGet(keys);
+            const parsed = values.map(item => [item[0], JSON.parse(item[1])]);
+            return parsed
+        }
+        catch (error) {
+            console.error("Error getting multiple values:", error);
+        }
     }
 
-    removeValue = async (key) => {
-        return new Promise((resolve, reject) => {
-            this.store.removeItem(key)
-                .then(() => resolve())
-                .catch(error => reject(error))
-        });
+    removeValue = async key => {
+        try {
+            const promise = await this.store.removeItem(key);
+            return promise
+        } catch (error) {
+            console.error("Error removing value:", error);
+        }
     }
 }
 

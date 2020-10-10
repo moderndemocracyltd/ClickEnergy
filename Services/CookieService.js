@@ -14,58 +14,62 @@ class CookieService {
         this.SESSION_KEY = "ASP.NET_SessionId";
     }
 
-    loadStoredCookies = async (url) => {
-        return new Promise((resolve, reject) => {
-            this.store.getMultipleValues([this.AUTH_KEY, this.SESSION_KEY])
-                .then(async stored => {
+    loadStoredCookies = async url => {
+        try {
+            let authPresent = false;
+            let promises = [];
+            const storedCookies = await this.store.getMultipleValues([this.AUTH_KEY, this.SESSION_KEY]);
 
-                    let authPresent = false;
+            for (const cookie of storedCookies) {
+                const [cookieKey, cookieValue] = cookie;
 
-                    for (const cookie of stored) {
-                        const cookieKey = cookie[0];
-                        const parsed = JSON.parse(cookie[1]);
+                if (cookieKey === this.AUTH_KEY && cookieValue !== this.authCookie) {
+                    authPresent = true;
+                    this.authCookie = cookieValue;
+                }
+                if (cookieKey === this.SESSION_KEY && cookieValue !== this.sessionCookie) {
+                    this.sessionCookie = cookieValue;
+                }
+                if (cookieValue) {
+                    const headers = `${cookieKey}=${cookieValue}; path=/; expires=${new Date().setHours(new Date().getHours() + 1)}; secure; HttpOnly;`
+                    promises.push(this.manager.setFromResponse(url, headers));
+                }
+            }
 
-                        if (cookieKey === this.AUTH_KEY && parsed !== this.authCookie) {
-                            this.authCookie = parsed;
-                            authPresent = true;
-                        }
-                        if (cookieKey === this.SESSION_KEY && parsed !== this.sessionCookie) {
-                            this.sessionCookie = parsed;
-                        }
-                        if (parsed) {
-                            const headers = `${cookieKey}=${parsed}; path=/; expires=${new Date().setHours(new Date().getHours() + 1)}; secure; HttpOnly;`
-                            await this.manager.setFromResponse(url, headers)
-                        }
-                    }
-
-                    resolve(authPresent)
-                }).catch(error => reject(error));
-        });
+            await Promise.all(promises);
+            return authPresent;
+        } catch (error) {
+            console.error("Error loading cookies from storage:", error);
+        }
     }
 
-    saveCookies = async (url) => {
-        return new Promise((resolve, reject) => {
-            this.manager.get(url, true)
-                .then(async (response) => {
-                    const newAuth = response[this.AUTH_KEY];
-                    const newSession = response[this.SESSION_KEY];
+    saveCookies = async url => {
+        try {
+            const response = await this.manager.get(url, true);
+            const newAuth = response[this.AUTH_KEY];
+            const newSession = response[this.SESSION_KEY];
 
-                    if (newAuth && newAuth !== this.authCookie) {
-                        this.authCookie = newAuth;
-                        await this.store.setValue(this.AUTH_KEY, newAuth);
-                    }
-                    if (newSession && newSession !== this.sessionCookie) {
-                        this.sessionCookie = newSession;
-                        await this.store.setValue(this.SESSION_KEY, newSession);
-                    }
-                    resolve();
-                })
-                .catch(error => reject(error));
-        });
+            if (newAuth && newAuth !== this.authCookie) {
+                this.authCookie = newAuth;
+                await this.store.setValue(this.AUTH_KEY, newAuth);
+            }
+            if (newSession && newSession !== this.sessionCookie) {
+                this.sessionCookie = newSession;
+                await this.store.setValue(this.SESSION_KEY, newSession);
+            }
+        }
+        catch (error) {
+            console.error("Error saving cookies:", error);
+        }
     }
 
     clearCookies = async () => {
-        return await this.manager.clearAll();
+        try {
+            return await this.manager.clearAll();
+        }
+        catch (error) {
+            console.error("Error clearing cookies:", error);
+        }
     }
 }
 
