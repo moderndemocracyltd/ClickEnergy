@@ -3,6 +3,7 @@ import React, { useEffect, useState, useRef } from 'react';
 import { BackHandler, Linking, ActivityIndicator } from 'react-native';
 import { WebView } from 'react-native-webview';
 import CookieService from '../Services/CookieService';
+import BluetoothHandler from "./BluetoothModal";
 
 export default BrowserHandler = (props) => {
 
@@ -10,6 +11,8 @@ export default BrowserHandler = (props) => {
     const [baseURL, setbaseURl] = useState("");
     const [viewSource, setViewSource] = useState("");
     const [isLoading, setIsLoading] = useState(true);
+    const [modalVisile, setModalVisible] = useState(false);
+    const [KEY_CODE, setKeyCode] = useState(null);
 
     useEffect(() => {
         setUpView()
@@ -44,9 +47,8 @@ export default BrowserHandler = (props) => {
 
     const handlePostMessage = event => {
         const { data } = event.nativeEvent;
-        props.navigation.navigate('Bluetooth', {
-            keyCode: data
-        });
+        setKeyCode(data);
+        setModalVisible(true);
     }
 
     const displayError = () => {
@@ -81,12 +83,17 @@ export default BrowserHandler = (props) => {
             await openLinkExternally(url);
         }
 
-        if (url.includes(baseURL) && url.includes("Payment-Success")) {
-            // WEBVIEW_REF.current.injectJavaScript(`
-            //     let topUpCode = document.getElementById("TopUpCodePTag").innerHTML;
-            //     window.ReactNativeWebView.postMessage(topUpCode);
+        if (url.includes(baseURL) && url.includes("Top-Up")) {
+
+            setModalVisible(true);
+
+
+            // WEBVIEW_REF.current.injectJavaScript(patchPostMessageJsCode);
+            // const js = `(function(){
+            //     window.ReactNativeWebView.postMessage("HEllO");
             //     true;
-            // `);
+            // })()`
+            // WEBVIEW_REF.current.injectJavaScript(js);
         }
         await CookieService.saveCookies(url);
     }
@@ -100,21 +107,24 @@ export default BrowserHandler = (props) => {
                 />
             }
             {!isLoading &&
-                <WebView
-                    ref={WEBVIEW_REF}
-                    useWebKit={true}
-                    source={{ uri: viewSource }}
-                    bounces={false}
-                    cacheEnabled={true}
-                    originWhitelist={['*']}
-                    cacheMode={"LOAD_DEFAULT"}
-                    sharedCookiesEnabled={true}
-                    thirdPartyCookiesEnabled={true}
-                    allowsBackForwardNavigationGestures={true}
-                    onError={displayError}
-                    onMessage={handlePostMessage}
-                    onNavigationStateChange={handleNavigationChange}
-                />
+                <>
+                    <WebView
+                        ref={WEBVIEW_REF}
+                        useWebKit={true}
+                        source={{ uri: viewSource }}
+                        bounces={false}
+                        cacheEnabled={true}
+                        originWhitelist={['*']}
+                        cacheMode={"LOAD_DEFAULT"}
+                        sharedCookiesEnabled={true}
+                        thirdPartyCookiesEnabled={true}
+                        allowsBackForwardNavigationGestures={true}
+                        onError={displayError}
+                        onMessage={handlePostMessage}
+                        onNavigationStateChange={handleNavigationChange}
+                    />
+                    <BluetoothHandler visible={modalVisile} keyCode={KEY_CODE} />
+                </>
             }
         </>
     );
