@@ -27,10 +27,9 @@ class BluetoothService {
     startScanning = async () => {
         try {
             if (!this.scanning) {
-                const resultsPromise = await BleManager.scan([], 5, true)
-                console.log("scanning...");
+                console.log("Scanning...");
                 this.scanning = true;
-                return resultsPromise
+                await BleManager.scan([], 30, true);
             }
         } catch (error) {
             console.error(error);
@@ -39,6 +38,7 @@ class BluetoothService {
 
     handleStopScan = () => {
         this.scanning = false;
+        console.log("Stopped scanning.");
     }
 
     handleDiscoverPeripheral = peripheral => {
@@ -102,34 +102,37 @@ class BluetoothService {
         }
     }
 
+    sendDataToDevice = async (peripheral, data) => {
+        try {
+            const peripheralInfo = await BleManager.retrieveServices(peripheral.id);
+            const service = peripheralInfo.services[1]; //NEED TO READ MORE ABOUT SERVICES
+
+            let characteristic = null; //NEED TO READ MORE ABOUT CHARACTERISTICS
+            for (const item of peripheralInfo.characteristics) {
+                if (item.service === service) {
+                    characteristic = item.characteristic;
+                }
+            }
+
+            const convertedCode = convertCodeToByteArray(data);
+            await BleManager.writeWithoutResponse(peripheral.id, service, characteristic, convertedCode)
+
+            console.log("wrote data", convertedCode.join(', '))
+        } catch (error) {
+            console.error(error);
+        }
+    }
+
     connectToDevice = async peripheral => {
         try {
-            const response = await BleManager.connect(peripheral.id);
-            if (response) {
-                let local = this.peripherals;
-                let device = local.get(peripheral.id);
+            let local = this.peripherals;
+            let device = local.get(peripheral.id);
 
-                if (device) {
-                    device.connected = true;
-                    local.set(peripheral.id, device);
-                    this.peripherals = local;
-                }
-
-                const peripheralInfo = await BleManager.retrieveServices(peripheral.id);
-                const convertedCode = convertCodeToByteArray(KEY_CODE);
-                const service = peripheralInfo.services[1]; //NEED TO READ MORE ABOUT SERVICES
-                let characteristic = null; //NEED TO READ MORE ABOUT CHARACTERISTICS
-
-                for (const item of peripheralInfo.characteristics) {
-                    if (item.service === service) {
-                        characteristic = item.characteristic;
-                    }
-                }
-
-                const complete = await BleManager.writeWithoutResponse(peripheral.id, service, characteristic, convertedCode)
-                if (complete) {
-                    console.log("wrote data", convertedCode.join(', '))
-                }
+            if (device) {
+                device.connected = true;
+                local.set(peripheral.id, device);
+                this.peripherals = local;
+                await BleManager.connect(peripheral.id);
             }
         } catch (error) {
             console.error("Error while connecting device:", error);
