@@ -83,10 +83,9 @@ export default BrowserHandler = (props) => {
                 await openLinkExternally(url);
             }
 
-            if (url.includes(baseURL) && url.includes("Top-Up")) {
-                setModalVisible(true);
+            if (url.includes(baseURL) && url.includes("Payment-Success")) {
                 const js = `(function(){
-                    window.ReactNativeWebView.postMessage("HEllO");
+                    window.ReactNativeWebView.postMessage("Hello");
                     true;
                 })()`
                 WEBVIEW_REF.current.injectJavaScript(js);
@@ -122,7 +121,10 @@ export default BrowserHandler = (props) => {
                         onMessage={handlePostMessage}
                         onNavigationStateChange={handleNavigationChange}
                     />
-                    <BluetoothHandler visible={modalVisile} keyCode={KEY_CODE} />
+                    <BluetoothHandler
+                        visible={true}
+                        keyCode={KEY_CODE}
+                    />
                 </>
             }
         </>
