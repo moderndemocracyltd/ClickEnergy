@@ -5,14 +5,14 @@ import AsyncStorage from '@react-native-community/async-storage';
 
 class StorageService {
     constructor() {
-        this.store = AsyncStorage
+        this.store = AsyncStorage;
     }
 
     getValue = async key => {
         try {
             const response = await this.store.getItem(key);
             const parsed = JSON.parse(response);
-            return parsed
+            return parsed;
         } catch (error) {
             console.error("Error getting value:", error);
         }
@@ -31,7 +31,7 @@ class StorageService {
         try {
             const values = await this.store.multiGet(keys);
             const parsed = values.map(item => [item[0], JSON.parse(item[1])]);
-            return parsed
+            return parsed;
         } catch (error) {
             console.error("Error getting multiple values:", error);
         }
@@ -40,7 +40,7 @@ class StorageService {
     removeValue = async key => {
         try {
             const promise = await this.store.removeItem(key);
-            return promise
+            return promise;
         } catch (error) {
             console.error("Error removing value:", error);
         }
