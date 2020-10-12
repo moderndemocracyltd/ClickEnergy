@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import {
-    StyleSheet, Text, View, Modal, Button, TouchableOpacity,
+    StyleSheet, Text, View, Modal, Button, FlatList, TouchableOpacity,
     TouchableWithoutFeedback, TouchableHighlight, AppState,
 } from "react-native";
 import BluetoothService from "../Services/BluetoothService";
@@ -9,7 +9,13 @@ export default BluetoothHandler = (props) => {
 
     const KEY_CODE = props?.keyCode || null;
     const [visible, setVisible] = useState(true);
+    const [scanning, setScanning] = useState(false);
     const [appState, setAppState] = useState('');
+
+    useEffect(() => {
+        console.log("use effect scanning");
+        BluetoothService.isScanning = scanning
+    }, [scanning])
 
     useEffect(() => {
         AppState.addEventListener("change", handleAppStateChange);
@@ -33,13 +39,17 @@ export default BluetoothHandler = (props) => {
         }
     }
 
-    const test = peripheral => {
-        if (peripheral) {
-            if (peripheral.connected) {
-                BluetoothService.disconnectFromDevice(peripheral);
-            } else {
-                BluetoothService.connectToDevice(peripheral);
+    const test = async peripheral => {
+        try {
+            if (peripheral) {
+                if (peripheral.connected) {
+                    await BluetoothService.disconnectFromDevice(peripheral);
+                } else {
+                    await BluetoothService.connectToDevice(peripheral);
+                }
             }
+        } catch (error) {
+            console.error(error);
         }
     }
 
@@ -57,7 +67,7 @@ export default BluetoothHandler = (props) => {
     }
 
     const list = BluetoothService.listConnectedDevices();
-    const btnScanTitle = `Scan Bluetooth (${BluetoothService.isScanning() ? "on" : "off"})`;
+    const btnScanTitle = `Scan Bluetooth (${scanning ? "on" : "off"})`;
 
     return (
         <View style={styles.modalBackground}>
@@ -68,7 +78,10 @@ export default BluetoothHandler = (props) => {
                             <View>
                                 <Button
                                     title={btnScanTitle}
-                                    onPress={() => BluetoothService.startScanning()}
+                                    onPress={() => {
+                                        setScanning(!scanning);
+                                        BluetoothService.startScanning()
+                                    }}
                                 />
                             </View>
                             <View style={{ margin: 10 }}>
