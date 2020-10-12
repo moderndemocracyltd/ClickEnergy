@@ -8,7 +8,6 @@ import BluetoothService from "../Services/BluetoothService";
 export default BluetoothHandler = (props) => {
 
     const KEY_CODE = props?.keyCode || null;
-    const [visible, setVisible] = useState(true);
     const [scanning, setScanning] = useState(false);
     const [appState, setAppState] = useState('');
 
@@ -71,7 +70,7 @@ export default BluetoothHandler = (props) => {
 
     return (
         <View style={styles.modalBackground}>
-            <Modal visible={visible} animationType={'slide'} transparent={true}>
+            <Modal visible={props.visible} animationType={'slide'} transparent={true}>
                 <TouchableOpacity style={styles.opactity}>
                     <TouchableWithoutFeedback>
                         <View style={styles.modalContent}>

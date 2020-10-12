@@ -47,7 +47,7 @@ export default BrowserHandler = (props) => {
     const handlePostMessage = event => {
         const { data } = event.nativeEvent;
         setKeyCode(data);
-        setModalVisible(true);
+        //setModalVisible(true);
     }
 
     const displayError = () => {
@@ -104,28 +104,28 @@ export default BrowserHandler = (props) => {
                     size="large"
                 />
             }
-            {!isLoading &&
-                <>
-                    <WebView
-                        ref={WEBVIEW_REF}
-                        useWebKit={true}
-                        source={{ uri: viewSource }}
-                        bounces={false}
-                        cacheEnabled={true}
-                        originWhitelist={['*']}
-                        cacheMode={"LOAD_DEFAULT"}
-                        sharedCookiesEnabled={true}
-                        thirdPartyCookiesEnabled={true}
-                        allowsBackForwardNavigationGestures={true}
-                        onError={displayError}
-                        onMessage={handlePostMessage}
-                        onNavigationStateChange={handleNavigationChange}
-                    />
-                    <BluetoothHandler
-                        visible={modalVisible}
-                        keyCode={KEY_CODE}
-                    />
-                </>
+            {!isLoading && !modalVisible &&
+                <WebView
+                    ref={WEBVIEW_REF}
+                    useWebKit={true}
+                    source={{ uri: viewSource }}
+                    bounces={false}
+                    cacheEnabled={true}
+                    originWhitelist={['*']}
+                    cacheMode={"LOAD_DEFAULT"}
+                    sharedCookiesEnabled={true}
+                    thirdPartyCookiesEnabled={true}
+                    allowsBackForwardNavigationGestures={true}
+                    onError={displayError}
+                    onMessage={handlePostMessage}
+                    onNavigationStateChange={handleNavigationChange}
+                />
+            }
+            {!isLoading && modalVisible &&
+                <BluetoothHandler
+                    visible={modalVisible}
+                    keyCode={KEY_CODE}
+                />
             }
         </>
     );
