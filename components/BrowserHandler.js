@@ -11,7 +11,7 @@ export default BrowserHandler = (props) => {
     const [baseURL, setbaseURl] = useState("");
     const [viewSource, setViewSource] = useState("");
     const [isLoading, setIsLoading] = useState(true);
-    const [modalVisile, setModalVisible] = useState(false);
+    const [modalVisible, setModalVisible] = useState(false);
     const [KEY_CODE, setKeyCode] = useState(null);
 
     useEffect(() => {
@@ -122,7 +122,7 @@ export default BrowserHandler = (props) => {
                         onNavigationStateChange={handleNavigationChange}
                     />
                     <BluetoothHandler
-                        visible={true}
+                        visible={modalVisible}
                         keyCode={KEY_CODE}
                     />
                 </>
