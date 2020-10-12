@@ -13,8 +13,7 @@ class StorageService {
             const response = await this.store.getItem(key);
             const parsed = JSON.parse(response);
             return parsed
-        }
-        catch (error) {
+        } catch (error) {
             console.error("Error getting value:", error);
         }
     }
@@ -23,8 +22,7 @@ class StorageService {
         try {
             const promise = await this.store.setItem(key, JSON.stringify(value));
             return promise;
-        }
-        catch (error) {
+        } catch (error) {
             console.error("Error setting value:", error);
         }
     }
@@ -34,8 +32,7 @@ class StorageService {
             const values = await this.store.multiGet(keys);
             const parsed = values.map(item => [item[0], JSON.parse(item[1])]);
             return parsed
-        }
-        catch (error) {
+        } catch (error) {
             console.error("Error getting multiple values:", error);
         }
     }
