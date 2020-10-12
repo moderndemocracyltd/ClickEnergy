@@ -28,18 +28,17 @@ export default BrowserHandler = (props) => {
         const url = `https://${prefix}.clickenergyni.com`;
         setbaseURl(url);
 
-        const authPresent = await CookieService.loadStoredCookies(url)
+        const authPresent = await CookieService.loadStoredCookies(url);
         if (authPresent) {
             setViewSource(`${url}/Dashboard/Top-Up.aspx`);
         } else {
-            await CookieService.clearCookies().then(() => {
-                setViewSource(`${url}/Dashboard/Summary.aspx`)
-            });
+            await CookieService.clearCookies();
+            setViewSource(`${url}/Dashboard/Summary.aspx`);
         }
 
         setIsLoading(false);
     }
-    
+
     const handleBackButtonClick = () => {
         WEBVIEW_REF.current.goBack();
         return true;
@@ -53,48 +52,49 @@ export default BrowserHandler = (props) => {
 
     const displayError = () => {
         Alert.alert("Error", "An error has occured. Tap OK to go back",
-            [{
-                text: 'OK',
-                onPress: () => WEBVIEW_REF.current.goBack()
-            }],
+            [{ text: 'OK', onPress: () => WEBVIEW_REF.current.goBack() }],
             { cancelable: false }
         );
     }
 
     const openLinkExternally = async url => {
-        WEBVIEW_REF.current.stopLoading();
-        WEBVIEW_REF.current.goBack();
-        const supported = await Linking.canOpenURL(url);
-        if (supported) {
-            await Linking.openURL(url);
-        } else {
+        try {
+            WEBVIEW_REF.current.stopLoading();
+            WEBVIEW_REF.current.goBack();
+            const supported = await Linking.canOpenURL(url);
+            if (supported) {
+                await Linking.openURL(url);
+            }
+        } catch (error) {
+            console.error(error);
             alert(`Can't open link: ${url}`);
         }
     }
 
     const handleNavigationChange = async newNavState => {
-        const { url, title } = newNavState;
+        try {
+            const { url, title } = newNavState;
 
-        if (title === "about:blank") {
-            WEBVIEW_REF.current.goForward();
-            return;
-        }
-        if (!url.includes(baseURL) && !url.includes("judopay")) {
-            await openLinkExternally(url);
-        }
+            if (title === "about:blank") {
+                WEBVIEW_REF.current.goForward();
+                return;
+            }
+            if (!url.includes(baseURL) && !url.includes("judopay")) {
+                await openLinkExternally(url);
+            }
 
-        if (url.includes(baseURL) && url.includes("Top-Up")) {
-
-            setModalVisible(true);
-          
-            // WEBVIEW_REF.current.injectJavaScript(patchPostMessageJsCode);
-            // const js = `(function(){
-            //     window.ReactNativeWebView.postMessage("HEllO");
-            //     true;
-            // })()`
-            // WEBVIEW_REF.current.injectJavaScript(js);
+            if (url.includes(baseURL) && url.includes("Top-Up")) {
+                setModalVisible(true);
+                const js = `(function(){
+                    window.ReactNativeWebView.postMessage("HEllO");
+                    true;
+                })()`
+                WEBVIEW_REF.current.injectJavaScript(js);
+            }
+            await CookieService.saveCookies(url);
+        } catch (error) {
+            console.error(error);
         }
-        await CookieService.saveCookies(url);
     }
 
     return (

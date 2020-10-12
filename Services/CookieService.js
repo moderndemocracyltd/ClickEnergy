@@ -65,7 +65,7 @@ class CookieService {
 
     clearCookies = async () => {
         try {
-            return await this.manager.clearAll();
+            await this.manager.clearAll();
         }
         catch (error) {
             console.error("Error clearing cookies:", error);

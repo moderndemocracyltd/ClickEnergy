@@ -115,11 +115,11 @@ class BluetoothService {
             }
 
             const convertedCode = convertCodeToByteArray(data);
-            await BleManager.writeWithoutResponse(peripheral.id, service, characteristic, convertedCode)
+            await BleManager.writeWithoutResponse(peripheral.id, service, characteristic, convertedCode);
+            console.log("wrote data", convertedCode.join(', '));
 
-            console.log("wrote data", convertedCode.join(', '))
         } catch (error) {
-            console.error(error);
+            console.error("Error sending data:", error);
         }
     }
 
