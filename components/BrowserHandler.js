@@ -47,7 +47,7 @@ export default BrowserHandler = (props) => {
     const handlePostMessage = event => {
         const { data } = event.nativeEvent;
         setKeyCode(data);
-        //setModalVisible(true);
+        setModalVisible(true);
     }
 
     const displayError = () => {
