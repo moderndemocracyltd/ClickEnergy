@@ -1,7 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import {
-    StyleSheet, Text, View, Modal, Button, FlatList, TouchableOpacity,
+    StyleSheet, Text, View, Modal,
+    Button, FlatList, TouchableOpacity,
     TouchableWithoutFeedback, TouchableHighlight, AppState,
+    Platform, PermissionsAndroid
 } from "react-native";
 import BluetoothService from "../Services/BluetoothService";
 
@@ -9,6 +11,7 @@ export default BluetoothHandler = (props) => {
 
     const KEY_CODE = props?.keyCode || null;
     const [scanning, setScanning] = useState(false);
+    const [peripherals, setPeripherals] = useState([]);
     const [appState, setAppState] = useState('');
 
     useEffect(() => {
@@ -18,7 +21,12 @@ export default BluetoothHandler = (props) => {
 
     useEffect(() => {
         AppState.addEventListener("change", handleAppStateChange);
-        BluetoothService.startListening();
+        checkConnection();
+
+        setInterval(async () => {
+            const peripherals = await BluetoothService.retrieveConnected();
+            setPeripherals(peripherals);
+        }, 5000);
 
         return cleanUp = () => {
             AppState.removeEventListener("change");
@@ -26,10 +34,32 @@ export default BluetoothHandler = (props) => {
         }
     }, []);
 
+    const checkConnection = async () => {
+        if (Platform.OS === 'android' && Platform.Version >= 23) {
+            const result = await PermissionsAndroid.check(PermissionsAndroid.PERMISSIONS.ACCESS_FINE_LOCATION)
+            if (result) {
+                console.log("Permission is OK");
+                BluetoothService.startListening();
+            } else {
+                const result = await PermissionsAndroid.request(PermissionsAndroid.PERMISSIONS.ACCESS_FINE_LOCATION)
+                if (result) {
+                    console.log("User accept");
+                    BluetoothService.startListening();
+                } else {
+                    console.log("User refuse");
+                }
+            }
+        }
+        if (Platform.OS === 'ios') {
+            BluetoothService.startListening();
+        }
+    }
+
     const handleAppStateChange = async nextAppState => {
         try {
             if (appState.match(/inactive|background/) && nextAppState === "active") {
                 const peripherals = await BluetoothService.retrieveConnected();
+                setPeripherals(peripherals);
                 console.log("ConnectedPeripherals", peripherals);
                 setAppState(nextAppState);
             }
@@ -44,7 +74,11 @@ export default BluetoothHandler = (props) => {
                 if (peripheral.connected) {
                     await BluetoothService.disconnectFromDevice(peripheral);
                 } else {
-                    await BluetoothService.connectToDevice(peripheral);
+                    const response = await BluetoothService.connectToDevice(peripheral);
+                    if (response) {
+                        const peripherals = await BluetoothService.retrieveConnected();
+                        setPeripherals(peripherals);
+                    }
                 }
             }
         } catch (error) {
@@ -60,6 +94,12 @@ export default BluetoothHandler = (props) => {
                     <Text style={{ fontSize: 12, textAlign: 'center', color: '#333333', padding: 10 }}>{item.name}</Text>
                     <Text style={{ fontSize: 10, textAlign: 'center', color: '#333333', padding: 2 }}>RSSI: {item.rssi}</Text>
                     <Text style={{ fontSize: 8, textAlign: 'center', color: '#333333', padding: 2, paddingBottom: 20 }}>{item.id}</Text>
+                    {item.connected &&
+                        <Button
+                            title="Send Data"
+                            onPress={() => BluetoothService.sendDataToDevice(item, "")}
+                        />
+                    }
                 </View>
             </TouchableHighlight>
         );

@@ -1,5 +1,6 @@
 import { NativeEventEmitter, NativeModules } from "react-native";
 import BleManager from "react-native-ble-manager";
+import Buffer from "buffer";
 
 class BluetoothService {
     constructor() {
@@ -29,7 +30,7 @@ class BluetoothService {
             if (!this.scanning) {
                 console.log("Scanning...");
                 this.scanning = true;
-                await BleManager.scan([], 30, true);
+                await BleManager.scan([], 30, false);
             }
         } catch (error) {
             console.error(error);
@@ -44,11 +45,10 @@ class BluetoothService {
     handleDiscoverPeripheral = peripheral => {
         let local = this.peripherals;
 
-        if (!peripheral.name) {
-            peripheral.name = "NO NAME";
+        if (peripheral.name) {
+            local.set(peripheral.id, peripheral);
+            this.peripherals = local;
         }
-        local.set(peripheral.id, peripheral);
-        this.peripherals = local;
     }
 
     handleDisconnectedPeripheral = data => {
@@ -104,39 +104,82 @@ class BluetoothService {
 
     sendDataToDevice = async (peripheral, data) => {
         try {
-            const peripheralInfo = await BleManager.retrieveServices(peripheral.id);
-            const service = peripheralInfo.services[1]; //NEED TO READ MORE ABOUT SERVICES
 
-            let characteristic = null; //NEED TO READ MORE ABOUT CHARACTERISTICS
+            const pairCommand = ["55", "BB", "01", "44"]; //this.convertCodeToByteArray("55 BB 01 44");
+            const getAccountCommand = ["C2", "31"]; //this.convertCodeToByteArray("C2 31");
+            const keepAliveCommand = ["55", "BB", "03", "42"]; //this.convertCodeToByteArray("55 BB 03 42");
+
+            const { id } = peripheral;
+            const peripheralInfo = await BleManager.retrieveServices(id);
+            const [readService, readWriteService] = peripheralInfo.services;
+
+
+            setInterval(async () => {
+                await BleManager.write(peripheral.id, readWriteService, "49535343-6DAA-4D02-ABF6-19569ACA69FE", keepAliveCommand);
+                console.log("Keep Alive response");
+            }, 20000);
+
+            console.log("Info", peripheralInfo);
+
+            let characteristic = null;
             for (const item of peripheralInfo.characteristics) {
-                if (item.service === service) {
+                if (item.service === readWriteService) {
                     characteristic = item.characteristic;
                 }
             }
 
-            const convertedCode = convertCodeToByteArray(data);
-            await BleManager.writeWithoutResponse(peripheral.id, service, characteristic, convertedCode);
-            console.log("wrote data", convertedCode.join(', '));
+            await BleManager.write(id, readWriteService, characteristic, pairCommand);
+            console.log("Pair response");
 
+            await timeout(1000);
+            await BleManager.startNotification(id, readWriteService, characteristic);
+            await BleManager.retrieveServices(id);
+            await BleManager.write(id, readWriteService, characteristic, getAccountCommand);
+
+            await timeout(3000);
+            await BleManager.retrieveServices(id);
+            const readData = await BleManager.read(id, readWriteService, characteristic);
+            
+            console.log("Read Data", readData);
+            console.log("Wrote Data", pairCommand.join(', '));
+
+            // await timeout(4000);
+            // const balance = await BleManager.write(peripheral.id, serviceValue, characteristic, getDays);
+            // console.log("response days", balance);
+
+            // setInterval(
+            // async () => {
+            //     const keepAlive = this.convertCodeToByteArray("55 BB 03 42");
+            //     const res = await BleManager.write(peripheral.id, readWriteService, "49535343-6DAA-4D02-ABF6-19569ACA69FE", keepAlive);
+            //     console.log("Pair response", res);
+            // }, 
+            // 1000)
         } catch (error) {
             console.error("Error sending data:", error);
         }
     }
 
     connectToDevice = async peripheral => {
-        try {
-            let local = this.peripherals;
-            let device = local.get(peripheral.id);
+        return new Promise(async (resolve, reject) => {
+            try {
+                let local = this.peripherals;
+                let device = local.get(peripheral.id);
 
-            if (device) {
-                device.connected = true;
-                local.set(peripheral.id, device);
-                this.peripherals = local;
-                await BleManager.connect(peripheral.id);
+                if (device) {
+                    const response = await BleManager.connect(peripheral.id);
+                    if (response) {
+                        console.log("Connected", peripheral.id);
+                        device.connected = true;
+                        local.set(peripheral.id, device);
+                        this.peripherals = local;
+                        resolve();
+                    }
+                }
+            } catch (error) {
+                console.error("Error while connecting device:", error);
+                reject(error);
             }
-        } catch (error) {
-            console.error("Error while connecting device:", error);
-        }
+        })
     }
 
     listConnectedDevices = () => {
@@ -155,6 +198,10 @@ class BluetoothService {
         }
         return bytes;
     }
+}
+
+const timeout = (ms) => {
+    return new Promise(resolve => setTimeout(resolve, ms));
 }
 
 const bluetoothService = new BluetoothService()
