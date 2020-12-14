@@ -11,7 +11,7 @@ export default BrowserHandler = (props) => {
     const [baseURL, setbaseURl] = useState("");
     const [viewSource, setViewSource] = useState("");
     const [isLoading, setIsLoading] = useState(true);
-    const [modalVisible, setModalVisible] = useState(true);
+    const [modalVisible, setModalVisible] = useState(true); // KEEP TRUE to test bluetooth Modal/connection without having to top-up
     const [KEY_CODE, setKeyCode] = useState(null);
 
     useEffect(() => {
