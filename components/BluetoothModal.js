@@ -91,9 +91,9 @@ export default BluetoothHandler = (props) => {
         return (
             <TouchableHighlight onPress={() => test(item)}>
                 <View style={[styles.row, { backgroundColor: color }]}>
-                    <Text style={{ fontSize: 12, textAlign: 'center', color: '#333333', padding: 10 }}>{item.name}</Text>
-                    <Text style={{ fontSize: 10, textAlign: 'center', color: '#333333', padding: 2 }}>RSSI: {item.rssi}</Text>
-                    <Text style={{ fontSize: 8, textAlign: 'center', color: '#333333', padding: 2, paddingBottom: 20 }}>{item.id}</Text>
+                    <Text style={styles.deviceName}>{item.name}</Text>
+                    <Text style={styles.deviceRSI}>RSSI: {item.rssi}</Text>
+                    <Text style={styles.deviceID}>{item.id}</Text>
                     {item.connected &&
                         <Button
                             title="Send Data"
@@ -167,5 +167,24 @@ const styles = StyleSheet.create({
         width: '80%',
         height: '70%',
         backgroundColor: 'white',
+    },
+    deviceName: {
+        fontSize: 12,
+        textAlign: 'center',
+        color: '#333333',
+        padding: 10
+    },
+    deviceRSI: {
+        fontSize: 10, 
+        textAlign: 'center', 
+        color: '#333333', 
+        padding: 2
+    },
+    deviceID: {
+        fontSize: 8, 
+        textAlign: 'center', 
+        color: '#333333', 
+        padding: 2, 
+        paddingBottom: 20
     }
 });

@@ -15,7 +15,7 @@ export default BrowserHandler = (props) => {
     const [KEY_CODE, setKeyCode] = useState(null);
 
     useEffect(() => {
-        setUpView()
+        setUpView();
         BackHandler.addEventListener("hardwareBackPress", handleBackButtonClick);
 
         return cleanUp = () => {

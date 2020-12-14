@@ -1,4 +1,3 @@
-//import React, { useEffect, useState, useRef } from 'react';
 import CookieManager from '@react-native-community/react-native-cookies';
 import StorageService from './LocalStorageService';
 

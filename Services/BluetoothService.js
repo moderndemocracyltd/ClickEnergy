@@ -104,56 +104,48 @@ class BluetoothService {
 
     sendDataToDevice = async (peripheral, data) => {
         try {
+            const Rx = "49535343-1E4D-4BD9-BA61-23C647249616";
+            const Tx = "49535343-8841-43F4-A8D4-ECBE34729BB3";
 
-            const pairCommand = ["55", "BB", "01", "44"]; //this.convertCodeToByteArray("55 BB 01 44");
-            const getAccountCommand = ["C2", "31"]; //this.convertCodeToByteArray("C2 31");
-            const keepAliveCommand = ["55", "BB", "03", "42"]; //this.convertCodeToByteArray("55 BB 03 42");
+            const enableTransparent = this.convertCodeToByteArray("55 BB 01 44");
+            const getAccountCommand = this.convertCodeToByteArray("C2 31");
+            const keepAliveCommand = this.convertCodeToByteArray("55 BB 03 42");
 
             const { id } = peripheral;
-            const peripheralInfo = await BleManager.retrieveServices(id);
-            const [readService, readWriteService] = peripheralInfo.services;
-
+            let peripheralInfo = await BleManager.retrieveServices(id);
+            const primaryService = peripheralInfo.services[1];
 
             setInterval(async () => {
-                await BleManager.write(peripheral.id, readWriteService, "49535343-6DAA-4D02-ABF6-19569ACA69FE", keepAliveCommand);
+                await BleManager.write(id, primaryService, Rx, keepAliveCommand);
                 console.log("Keep Alive response");
-            }, 20000);
+            }, 60000);
+            
+            //Enable Transparent
+            peripheralInfo = await BleManager.retrieveServices(id);
+            await BleManager.startNotification(id, primaryService, Rx);
+            await BleManager.write(id, primaryService, Rx, enableTransparent);
+            await timeout(2000);
+            
+            //Try to Read from Rx
+            await BleManager.startNotification(id, primaryService, Rx);
+            const readData = await BleManager.read(id, primaryService, Rx);
 
-            console.log("Info", peripheralInfo);
-
-            let characteristic = null;
-            for (const item of peripheralInfo.characteristics) {
-                if (item.service === readWriteService) {
-                    characteristic = item.characteristic;
-                }
-            }
-
-            await BleManager.write(id, readWriteService, characteristic, pairCommand);
+            console.log(readData);
             console.log("Pair response");
 
-            await timeout(1000);
-            await BleManager.startNotification(id, readWriteService, characteristic);
-            await BleManager.retrieveServices(id);
-            await BleManager.write(id, readWriteService, characteristic, getAccountCommand);
-
-            await timeout(3000);
-            await BleManager.retrieveServices(id);
-            const readData = await BleManager.read(id, readWriteService, characteristic);
+            //Notify to read account
+            await BleManager.startNotification(id, primaryService, Rx);
+            peripheralInfo = await BleManager.retrieveServices(id);
             
-            console.log("Read Data", readData);
-            console.log("Wrote Data", pairCommand.join(', '));
+            //Read Account
+            await BleManager.write(id, primaryService, Rx, getAccountCommand);
 
-            // await timeout(4000);
-            // const balance = await BleManager.write(peripheral.id, serviceValue, characteristic, getDays);
-            // console.log("response days", balance);
+            //Notify to read data
+            await BleManager.startNotification(id, primaryService, Rx);
+            peripheralInfo = await BleManager.retrieveServices(id);
 
-            // setInterval(
-            // async () => {
-            //     const keepAlive = this.convertCodeToByteArray("55 BB 03 42");
-            //     const res = await BleManager.write(peripheral.id, readWriteService, "49535343-6DAA-4D02-ABF6-19569ACA69FE", keepAlive);
-            //     console.log("Pair response", res);
-            // }, 
-            // 1000)
+            // const readData = await BleManager.read(id, primaryService, Rx);
+            // console.log(readData);
         } catch (error) {
             console.error("Error sending data:", error);
         }
