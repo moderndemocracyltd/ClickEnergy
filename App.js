@@ -26,7 +26,7 @@ const App = () => {
         <Stack.Navigator
           screenOptions={{ headerShown: false }}
           initialRouteName="Browser">
-
+            
           <Stack.Screen
             name="Browser"
             component={BrowserHandler}

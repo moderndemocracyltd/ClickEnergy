@@ -1,28 +1,42 @@
 
 import React, { useEffect, useState, useRef } from 'react';
-import { BackHandler, Linking, ActivityIndicator, Platform, Alert } from 'react-native';
+import { BackHandler, Linking, ActivityIndicator } from 'react-native';
 import { WebView } from 'react-native-webview';
-import CookieManager from '@react-native-community/react-native-cookies';
-import AsyncStorage from '@react-native-community/async-storage';
+import CookieService from '../Services/CookieService';
+import BluetoothHandler from "./BluetoothModal";
 
 export default BrowserHandler = (props) => {
 
     const WEBVIEW_REF = useRef();
-
     const [baseURL, setbaseURl] = useState("");
     const [viewSource, setViewSource] = useState("");
-    const [sessionCookie, setSessionCookie] = useState({});
-    const [authCookie, setAuthCookie] = useState({});
     const [isLoading, setIsLoading] = useState(true);
+    const [modalVisible, setModalVisible] = useState(true); // KEEP TRUE to test bluetooth Modal/connection without having to top-up
+    const [KEY_CODE, setKeyCode] = useState(null);
 
-    const displayError = () => {
-        Alert.alert(
-            "Error",
-            "An error has occured. Tap OK to go back",
-            [
-                { text: 'OK', onPress: () => WEBVIEW_REF.current.goBack() },
-            ],
-            { cancelable: false });
+    useEffect(() => {
+        setUpView();
+        BackHandler.addEventListener("hardwareBackPress", handleBackButtonClick);
+
+        return cleanUp = () => {
+            BackHandler.removeEventListener("hardwareBackPress");
+        }
+    }, []);
+
+    const setUpView = async () => {
+        const prefix = global.__DEV__ ? "staging" : "www";
+        const url = `https://${prefix}.clickenergyni.com`;
+        setbaseURl(url);
+
+        const authPresent = await CookieService.loadStoredCookies(url);
+        if (authPresent) {
+            setViewSource(`${url}/Dashboard/Top-Up.aspx`);
+        } else {
+            await CookieService.clearCookies();
+            setViewSource(`${url}/Dashboard/Summary.aspx`);
+        }
+
+        setIsLoading(false);
     }
 
     const handleBackButtonClick = () => {
@@ -30,165 +44,87 @@ export default BrowserHandler = (props) => {
         return true;
     }
 
-    const handleNavigationChange = async newNavState => {
-        const { url, title } = newNavState;
+    const handlePostMessage = event => {
+        const { data } = event.nativeEvent;
+        setKeyCode(data);
+        setModalVisible(true);
+    }
 
-        if (title === "about:blank") {
-            WEBVIEW_REF.current.goForward();
-            return;
-        }
+    const displayError = () => {
+        Alert.alert("Error", "An error has occured. Tap OK to go back",
+            [{ text: 'OK', onPress: () => WEBVIEW_REF.current.goBack() }],
+            { cancelable: false }
+        );
+    }
 
-        if (url.includes("facebook")
-            || url.includes("twitter")
-            || url.includes("youtube")
-            || url.includes("zopim")) {
+    const openLinkExternally = async url => {
+        try {
             WEBVIEW_REF.current.stopLoading();
             WEBVIEW_REF.current.goBack();
             const supported = await Linking.canOpenURL(url);
             if (supported) {
                 await Linking.openURL(url);
-            } else {
-                alert(`Can't open link: ${url}`);
             }
-        }
-
-        updateCookies(url);
-    }
-
-    const updateCookies = (url) => {
-        if (Platform.OS === 'ios') {
-            updateiOSCookies();
-        }
-        if (Platform.OS === 'android') {
-            updateAndroidCookies(url);
+        } catch (error) {
+            console.error(error);
+            alert(`Can't open link: ${url}`);
         }
     }
 
-    const updateiOSCookies = () => {
-        CookieManager.getAll(true).then(async (res) => await update(res));
-    }
+    const handleNavigationChange = async newNavState => {
+        try {
+            const { url, title } = newNavState;
 
-    const updateAndroidCookies = (url) => {
-        CookieManager.get(url).then(async (res) => await update(res));
-    }
-
-    const update = async (res) => {
-
-        let newAuth = res[".ASPXFORMSAUTH"];
-        let newSession = res["ASP.NET_SessionId"];
-
-        if (newAuth) {
-            if (newAuth !== authCookie) {
-                setAuthCookie(newAuth);
-                await AsyncStorage.setItem('@auth', JSON.stringify(newAuth));
+            if (title === "about:blank") {
+                WEBVIEW_REF.current.goForward();
+                return;
             }
-        } else {
-            await AsyncStorage.removeItem('@auth');
-            if (Platform.OS === 'ios') {
-                await CookieManager.clearByName('.ASPXFORMSAUTH');
+            if (!url.includes(baseURL) && !url.includes("judopay")) {
+                await openLinkExternally(url);
             }
-        }
-        if (newSession && newSession !== sessionCookie) {
-            setSessionCookie(newSession);
-            await AsyncStorage.setItem('@session', JSON.stringify(newSession));
-        }
-    }
 
-    const readStoredCookie = async () => {
-        AsyncStorage.multiGet(['@auth', '@session'])
-            .then(async stored => {
-
-                let authPresent = false;
-
-                for (const cookie of stored) {
-                    let parsed = JSON.parse(cookie[1]);
-
-                    if (parsed?.name === ".ASPXFORMSAUTH" || (cookie[0] === "@auth" && cookie[1])) {
-                        setAuthCookie(parsed);
-                        authPresent = true;
-                    }
-                    if (parsed?.name === "ASP.NET_SessionId" || (cookie[0] === "@session" && cookie[1])) {
-                        setSessionCookie(parsed);
-                    }
-                    if (Platform.OS === 'ios') {
-                        await CookieManager.set({
-                            name: parsed?.name ? parsed?.name : '',
-                            value: parsed?.value ? parsed?.value : '',
-                            domain: parsed?.domain ? parsed?.domain : '',
-                            origin: parsed?.origin ? parsed?.origin : '',
-                            path: parsed?.path ? parsed?.path : '/',
-                            version: parsed?.version ? parsed?.version : '1',
-                            expiration: parsed?.expiration ? parsed?.expiration : new Date().setHours(new Date().getHours() + 1)
-                        })
-                    }
-                }
-                setUpView(authPresent);
-                setIsLoading(false);
-            });
-    }
-
-    const setUpView = async (authPresent) => {
-
-        let prefix = "";
-        if (global.__DEV__) {
-                prefix = "https://staging.clickenergyni.com";
-            } else {
-            prefix = "https://www.clickenergyni.com";
-        }
-        setbaseURl(prefix);
-
-        if (authPresent) {
-            setViewSource(`${prefix}/Dashboard/Summary.aspx`);
-        } else {
-            await CookieManager.clearAll().then(() => {
-                setViewSource(`${prefix}/Dashboard/Summary.aspx`);
-            })
+            if (url.includes(baseURL) && url.includes("Payment-Success")) {
+                const js = `(function(){
+                    window.ReactNativeWebView.postMessage("Hello");
+                    true;
+                })()`
+                WEBVIEW_REF.current.injectJavaScript(js);
+            }
+            await CookieService.saveCookies(url);
+        } catch (error) {
+            console.error(error);
         }
     }
-
-    useEffect(() => {
-
-        readStoredCookie();
-        BackHandler.addEventListener("hardwareBackPress", handleBackButtonClick);
-
-        return cleanUp = () => {
-            BackHandler.removeEventListener("hardwareBackPress", handleBackButtonClick);
-        }
-    },
-        []
-    );
 
     return (
         <>
             {isLoading &&
                 <ActivityIndicator
-                    style={{
-                        flex: 1,
-                        left: 0,
-                        right: 0,
-                        top: 0,
-                        bottom: 0,
-                        position: 'absolute',
-                        alignItems: 'center',
-                        justifyContent: 'center'
-                    }}
+                    style={{ position: 'absolute', left: 0, right: 0, bottom: 0, top: 0, }}
                     size="large"
                 />
             }
-            {!isLoading &&
+            {!isLoading && !modalVisible &&
                 <WebView
-                    ref={ WEBVIEW_REF }
-                    useWebKit={ true }
-                    source={{ uri: viewSource, }}
-                    onNavigationStateChange={ handleNavigationChange }
-                    allowsBackForwardNavigationGestures={ true }
-                    bounces={ false }
-                    cacheEnabled={ true }
-                    cacheMode={ "LOAD_DEFAULT" }
-                    sharedCookiesEnabled={ true }
-                    thirdPartyCookiesEnabled={ true }
+                    ref={WEBVIEW_REF}
+                    useWebKit={true}
+                    source={{ uri: viewSource }}
+                    bounces={false}
+                    cacheEnabled={true}
                     originWhitelist={['*']}
-                    onError={ displayError }
+                    cacheMode={"LOAD_DEFAULT"}
+                    sharedCookiesEnabled={true}
+                    thirdPartyCookiesEnabled={true}
+                    allowsBackForwardNavigationGestures={true}
+                    onError={displayError}
+                    onMessage={handlePostMessage}
+                    onNavigationStateChange={handleNavigationChange}
+                />
+            }
+            {!isLoading && modalVisible &&
+                <BluetoothHandler
+                    visible={modalVisible}
+                    keyCode={KEY_CODE}
                 />
             }
         </>
