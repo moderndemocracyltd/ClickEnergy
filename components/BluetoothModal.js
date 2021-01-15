@@ -8,7 +8,6 @@ import {
 import BluetoothService from "../Services/BluetoothService";
 
 export default BluetoothHandler = (props) => {
-
     const KEY_CODE = props?.keyCode || null;
     const [scanning, setScanning] = useState(false);
     const [peripherals, setPeripherals] = useState([]);
@@ -22,17 +21,18 @@ export default BluetoothHandler = (props) => {
     useEffect(() => {
         AppState.addEventListener("change", handleAppStateChange);
         checkConnection();
-
-        setInterval(async () => {
-            const peripherals = await BluetoothService.retrieveConnected();
-            setPeripherals(peripherals);
-        }, 5000);
+        setInterval(getConnectedDevices, 5000);
 
         return cleanUp = () => {
             AppState.removeEventListener("change");
             BluetoothService.stopListening();
         }
     }, []);
+
+    const getConnectedDevices = async () => {
+        const peripherals = await BluetoothService.retrieveConnected();
+        setPeripherals(peripherals);
+    }
 
     const checkConnection = async () => {
         if (Platform.OS === 'android' && Platform.Version >= 23) {
@@ -60,7 +60,6 @@ export default BluetoothHandler = (props) => {
             if (appState.match(/inactive|background/) && nextAppState === "active") {
                 const peripherals = await BluetoothService.retrieveConnected();
                 setPeripherals(peripherals);
-                console.log("ConnectedPeripherals", peripherals);
                 setAppState(nextAppState);
             }
         } catch (error) {
@@ -147,7 +146,6 @@ export default BluetoothHandler = (props) => {
                 </TouchableOpacity>
             </Modal>
         </View>
-
     )
 }
 

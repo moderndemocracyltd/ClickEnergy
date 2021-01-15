@@ -1,6 +1,7 @@
 import { NativeEventEmitter, NativeModules } from "react-native";
 import BleManager from "react-native-ble-manager";
-import Buffer from "buffer";
+import Constants from "../Utils/Contants";
+import { hexToBytes, bytesToHex, convertCodeToByteArray } from "../Utils/Utils";
 
 class BluetoothService {
     constructor() {
@@ -104,48 +105,45 @@ class BluetoothService {
 
     sendDataToDevice = async (peripheral, data) => {
         try {
-            const Rx = "49535343-1E4D-4BD9-BA61-23C647249616";
-            const Tx = "49535343-8841-43F4-A8D4-ECBE34729BB3";
-
-            const enableTransparent = this.convertCodeToByteArray("55 BB 01 44");
-            const getAccountCommand = this.convertCodeToByteArray("C2 31");
-            const keepAliveCommand = this.convertCodeToByteArray("55 BB 03 42");
+            const {
+                TRANSPARENT_COMMAND,
+                GET_ACCOUNT_BALANCE,
+                RX,
+                TX
+            } = Constants;
 
             const { id } = peripheral;
             let peripheralInfo = await BleManager.retrieveServices(id);
-            const primaryService = peripheralInfo.services[1];
+            const service = peripheralInfo.services[1]
 
-            setInterval(async () => {
-                await BleManager.write(id, primaryService, Rx, keepAliveCommand);
-                console.log("Keep Alive response");
-            }, 60000);
-            
             //Enable Transparent
             peripheralInfo = await BleManager.retrieveServices(id);
-            await BleManager.startNotification(id, primaryService, Rx);
-            await BleManager.write(id, primaryService, Rx, enableTransparent);
-            await timeout(2000);
-            
-            //Try to Read from Rx
-            await BleManager.startNotification(id, primaryService, Rx);
-            const readData = await BleManager.read(id, primaryService, Rx);
+            await BleManager.startNotification(id, service, TX);
+            await BleManager.write(id, service, TX, TRANSPARENT_COMMAND);
 
-            console.log(readData);
-            console.log("Pair response");
+            // peripheralInfo = await BleManager.retrieveServices(id);
+            // console.log(peripheralInfo.characteristics[10].value);
+            // await BleManager.startNotification(id, service, RX);
+            // const newReadData = await BleManager.read(id, service, RX);
+            // console.log(newReadData);
 
-            //Notify to read account
-            await BleManager.startNotification(id, primaryService, Rx);
             peripheralInfo = await BleManager.retrieveServices(id);
-            
-            //Read Account
-            await BleManager.write(id, primaryService, Rx, getAccountCommand);
+            console.log(peripheralInfo.characteristics[10].value);
+            await BleManager.startNotification(id, service, TX);
+            await BleManager.write(id, service, TX, GET_ACCOUNT_BALANCE);
 
-            //Notify to read data
-            await BleManager.startNotification(id, primaryService, Rx);
             peripheralInfo = await BleManager.retrieveServices(id);
+            console.log(peripheralInfo.characteristics[10].value);
+            await BleManager.startNotification(id, service, RX);
+            const newReadData2 = await BleManager.read(id, service, RX);
+            console.log(newReadData2);
 
-            // const readData = await BleManager.read(id, primaryService, Rx);
-            // console.log(readData);
+            // peripheralInfo = await BleManager.retrieveServices(id);
+            // console.log(peripheralInfo.characteristics[10].value);
+            // await BleManager.startNotification(id, service, RX);
+            // const newReadData = await BleManager.read(id, service, RX);
+            // console.log(newReadData);
+
         } catch (error) {
             console.error("Error sending data:", error);
         }
@@ -180,15 +178,6 @@ class BluetoothService {
 
     isScanning = () => {
         return this.scanning;
-    }
-
-    convertCodeToByteArray = code => {
-        let bytes = [];
-        for (const index in code) {
-            const char = code.charCodeAt(index);
-            bytes = bytes.concat([char & 0xff, char / 256 >>> 0]);
-        }
-        return bytes;
     }
 }
 
