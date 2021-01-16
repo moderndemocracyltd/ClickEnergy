@@ -16,8 +16,8 @@ export default BluetoothHandler = (props) => {
     const [scanning, setScanning] = useState(false);
     const [list, setList] = useState([]);
 
-    const [error, setErrorMessage] = useState("Something Went wrong");
-    const [showDeviceList, setShowDeviceList] = useState(false);
+    const [error, setErrorMessage] = useState(null);
+    const [showDeviceList, setShowDeviceList] = useState(true);
     const [isToppingUp, setIsToppingUp] = useState(false);
     const [topUpSuccess, setTopUpSuccess] = useState(false);
     const [topUpFailure, setTopUpFailure] = useState(false);
@@ -25,7 +25,7 @@ export default BluetoothHandler = (props) => {
     useEffect(() => {
         AppState.addEventListener("change", handleAppStateChange);
         BluetoothService.setUpListeners();
-        BluetoothService.addCallbacks(setScanning);
+        BluetoothService.addCallbacks(setScanning, setTopUpSuccess, setTopUpFailure);
         checkPermissions();
 
         return cleanUp = () => {
@@ -34,12 +34,27 @@ export default BluetoothHandler = (props) => {
         }
     }, []);
 
+    useEffect(() => {
+        if (error) {
+            setScanning(false);
+            setList([]);
+            setShowDeviceList(false);
+            setIsToppingUp(false);
+            setTopUpSuccess(false);
+            setTopUpFailure(false);
+        }
+    }, [error]);
+
     const checkPermissions = async () => {
-        const hasPermission = await BluetoothService.checkPermission();
-        if (hasPermission) {
-            setInterval(retrieveDevices, 1000);
-        } else {
-            setErrorMessage("Bluetooth Permissions not set");
+        try {
+            const hasPermission = await BluetoothService.checkPermission();
+            if (hasPermission) {
+                setInterval(retrieveDevices, 1000);
+            } else {
+                setErrorMessage("Bluetooth Permissions not set");
+            }
+        } catch (error) {
+            setErrorMessage(error);
         }
     }
 
@@ -62,10 +77,13 @@ export default BluetoothHandler = (props) => {
                 await BluetoothService.connectToDevice(peripheral);
                 setShowDeviceList(false);
                 setIsToppingUp(true);
+
                 await BluetoothService.sendDataToDevice(peripheral, KEY_CODE);
+                setIsToppingUp(false);
+                setTopUpSuccess(true);
             }
         } catch (error) {
-            setErrorMessage(error.message);
+            setErrorMessage(error);
         }
     }
 
@@ -77,6 +95,17 @@ export default BluetoothHandler = (props) => {
         setIsToppingUp(false);
         setTopUpSuccess(false);
         setTopUpFailure(false);
+    }
+
+    const topUpCompletionHandler = async () => {
+        try {
+            await BluetoothService.disconnectFromMeter();
+            BluetoothService.handleStopScan();
+            BluetoothService.resetMeterInfo();
+            resetFlow();
+        } catch (error) {
+            setErrorMessage(error);
+        }
     }
 
     return (
@@ -94,10 +123,14 @@ export default BluetoothHandler = (props) => {
                                 />
                             }
                             {isToppingUp &&
-                                <TopUpHelper />
+                                <TopUpHelper
+                                    reset={resetFlow}
+                                />
                             }
                             {topUpSuccess &&
-                                <TopUpSuccessFeedback />
+                                <TopUpSuccessFeedback
+                                    completionHandler={topUpCompletionHandler}
+                                />
                             }
                             {topUpFailure &&
                                 <TopUpFailedFeedback />

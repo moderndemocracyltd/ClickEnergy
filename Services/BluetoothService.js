@@ -1,22 +1,28 @@
 import { Platform, PermissionsAndroid, NativeEventEmitter, NativeModules } from "react-native";
 import BleManager from "react-native-ble-manager";
-import Buffer from 'buffer';
-import Constants from "../Utils/Contants";
-import { bytesToHex } from "../Utils/Utils";
+import Buffer from "buffer";
+
+import Constants from "../Helpers/Contants";
+import { bytesToHex } from "../Helpers/Utils";
 
 class BluetoothService {
     constructor() {
         this.btModule = NativeModules.BleManager;
         this.emitter = new NativeEventEmitter(this.btModule);
 
+        this.meter = {
+            meterId: "",
+            meterName: "",
+            isTransparent: false,
+            response: "",
+            balance: ""
+        }
+
         this.peripherals = new Map();
         this.scanning = false;
-        this.isTransparent = false;
 
-        this.meterResponse = "";
-        this.meterBalance = "";
-
-        this.setUIList = null;
+        this.setTopUpSuccessUI = null;
+        this.setTopUpFailureUI = null;
         this.setUIScanning = null;
     }
 
@@ -38,33 +44,29 @@ class BluetoothService {
     startScanning = async () => {
         try {
             if (!this.scanning) {
-                console.log("Scanning...");
-                this.peripherals = new Map();
                 this.scanning = true;
                 this.setUIScanning(true);
                 await BleManager.scan([], 15, false);
             }
         } catch (error) {
             console.error(error);
+            throw error;
         }
     }
 
     handleStopScan = () => {
         this.scanning = false;
         this.setUIScanning(false);
-        console.log("Stopped scanning.");
     }
 
     handleDiscoverPeripheral = peripheral => {
         if (peripheral.name) {
-            console.log(peripheral.name);
             this.peripherals.set(peripheral.id, peripheral)
         }
     }
 
     handleDisconnectedPeripheral = data => {
         let peripheral = this.peripherals.get(data.peripheral);
-
         if (peripheral) {
             peripheral.connected = false;
             this.peripherals.set(peripheral.id, peripheral);
@@ -75,29 +77,25 @@ class BluetoothService {
         try {
             let device = this.peripherals.get(peripheral.id);
             if (device) {
-                const response = await BleManager.connect(peripheral.id);
-                if (response) {
-                    console.log("Connected", peripheral.id);
-                    device.connected = true;
-                    this.peripherals.set(peripheral.id, device);
-                }
+                await BleManager.connect(peripheral.id);
+                this.peripherals.set(peripheral.id, device);
+                this.meter.id = peripheral.id;
+                this.meter.name = peripheral.name;
             }
         } catch (error) {
             console.error("Error while connecting device:", error);
+            throw error;
         }
     }
 
-    disconnectFromDevice = async peripheral => {
+    disconnectFromMeter = async () => {
         try {
-            let device = this.peripherals.get(peripheral.id);
-
-            if (device) {
-                device.connected = false;
-                this.peripherals.set(peripheral.id, device);
-                return await BleManager.disconnect(peripheral.id);
+            if(this.meter.id) {
+                return await BleManager.disconnect(this.meter.id);
             }
         } catch (error) {
             console.error("Error disconnecting device:", error);
+            throw error;
         }
     }
 
@@ -111,30 +109,33 @@ class BluetoothService {
             return connectedResults;
         } catch (error) {
             console.error(error);
+            throw error;
         }
     }
 
     handleUpdateValueForCharacteristic = async data => {
         const { TRANSPARENT_COMMAND_RESPONSE } = Constants;
-
         if (bytesToHex(data.value) === bytesToHex(TRANSPARENT_COMMAND_RESPONSE)) {
-            this.isTransparent = true;
+            this.meter.isTransparent = true;
         } else {
-            this.meterResponse += `${bytesToHex(data.value)}`;
+            this.parseMeterResponse(data);
         }
+    }
 
-        const converted = Buffer.Buffer.from(this.meterResponse, 'hex').toString();
+    parseMeterResponse = async (meterRes) => {
+        this.meter.response += `${bytesToHex(meterRes.value)}`;
+        const converted = Buffer.Buffer.from(this.meter.response, 'hex').toString();
         const response = converted.split("").reverse().join("");
 
         if (response.includes("DAYS LEFT") || response.includes("NO DATA")) {
-            this.meterResponse = "";
+            this.meter.response = "";
         }
 
         if (response.includes("ACCOUNT") && response.includes("#")) {
             const balance = response.split("#")[1];
-            this.meterBalance = balance;
-            console.log("Meter balance: $",balance);
-            await this.stopNotifying(data.peripheral);
+            this.meter.balance = balance;
+            this.setTopUpSuccessUI(true);
+            await this.stopNotifying(meterRes.peripheral);
         }
     }
 
@@ -142,16 +143,12 @@ class BluetoothService {
         try {
             const { id } = peripheral;
 
-            //Enable Transparent
             await this.sendTransparentMessageToMeter(id);
-
-            //Send Vend Code
             //await this.sendVendCode(data);
-
-            //Get Account Info
             await this.sendGetAccountMessageToMeter(id);
         } catch (error) {
             console.error("Error sending data:", error);
+            throw error;
         }
     }
 
@@ -175,45 +172,86 @@ class BluetoothService {
         return false;
     }
 
+    getMeterBalance = () => {
+        return this.meterBalance;
+    }
+
     sendTransparentMessageToMeter = async meterId => {
-        const { SERVICE_UUID, RX, TX, TRANSPARENT_COMMAND } = Constants;
-        await BleManager.retrieveServices(meterId);
-        await BleManager.startNotification(meterId, SERVICE_UUID, RX);
-        await BleManager.write(meterId, SERVICE_UUID, TX, TRANSPARENT_COMMAND);
-        await BleManager.stopNotification(meterId, SERVICE_UUID, RX);
+        try {
+            const { SERVICE_UUID, RX, TX, TRANSPARENT_COMMAND } = Constants;
+            await BleManager.retrieveServices(meterId);
+            await BleManager.startNotification(meterId, SERVICE_UUID, RX);
+            await BleManager.write(meterId, SERVICE_UUID, TX, TRANSPARENT_COMMAND);
+            await BleManager.stopNotification(meterId, SERVICE_UUID, RX);
+        } catch (error) {
+            console.error(error);
+            throw error;
+        }
     }
 
     sendGetAccountMessageToMeter = async meterId => {
-        const { SERVICE_UUID, RX, TX, GET_ACCOUNT_BALANCE } = Constants;
-        await BleManager.retrieveServices(meterId);
-        await BleManager.startNotification(meterId, SERVICE_UUID, RX);
-        await BleManager.write(meterId, SERVICE_UUID, TX, GET_ACCOUNT_BALANCE);
+        try {
+            const { SERVICE_UUID, RX, TX, GET_ACCOUNT_BALANCE } = Constants;
+            await BleManager.retrieveServices(meterId);
+            await BleManager.startNotification(meterId, SERVICE_UUID, RX);
+            await BleManager.write(meterId, SERVICE_UUID, TX, GET_ACCOUNT_BALANCE);
+        } catch (error) {
+            console.error(error);
+            throw error;
+        }
     }
 
     stopNotifying = async meterId => {
-        const { SERVICE_UUID, RX } = Constants;
-        await BleManager.stopNotification(meterId, SERVICE_UUID, RX);
+        try {
+            const { SERVICE_UUID, RX } = Constants;
+            await BleManager.stopNotification(meterId, SERVICE_UUID, RX);
+        } catch (error) {
+            console.error(error);
+            throw error;
+        }
     }
 
     sendVendCode = async (meterId, code) => {
-        const { SERVICE_UUID, RX, TX, START_TOP_UP } = Constants;
-        await BleManager.retrieveServices(meterId);
-        await BleManager.startNotification(meterId, SERVICE_UUID, RX);
-        await BleManager.write(meterId, SERVICE_UUID, TX, START_TOP_UP);
+        try {
+            const { SERVICE_UUID, RX, TX, START_TOP_UP } = Constants;
+            await BleManager.retrieveServices(meterId);
+            await BleManager.startNotification(meterId, SERVICE_UUID, RX);
+            await BleManager.write(meterId, SERVICE_UUID, TX, START_TOP_UP);
 
-        //PARSE EACH DIGIT OF CODE AND PROCESS INTO PACKETS TO SEND TO METER
+            //PARSE EACH DIGIT OF CODE AND PROCESS INTO PACKETS TO SEND TO METER
+        } catch (error) {
+            console.error(error);
+            throw error;
+        }
     }
 
     killTransparentMode = async meterId => {
-        const { SERVICE_UUID, RX, TX, BRING_FREEDOM_OUT_OF_TRANS_MODE } = Constants;
-        await BleManager.retrieveServices(meterId);
-        await BleManager.startNotification(meterId, SERVICE_UUID, RX);
-        await BleManager.write(meterId, SERVICE_UUID, TX, BRING_FREEDOM_OUT_OF_TRANS_MODE);
-        await BleManager.stopNotification(meterId, SERVICE_UUID, RX);
+        try {
+            const { SERVICE_UUID, RX, TX, BRING_FREEDOM_OUT_OF_TRANS_MODE } = Constants;
+            await BleManager.retrieveServices(meterId);
+            await BleManager.startNotification(meterId, SERVICE_UUID, RX);
+            await BleManager.write(meterId, SERVICE_UUID, TX, BRING_FREEDOM_OUT_OF_TRANS_MODE);
+            await BleManager.stopNotification(meterId, SERVICE_UUID, RX);
+        } catch (error) {
+            console.error(error);
+            throw error;
+        }
     }
 
-    addCallbacks = (setUIScanning) => {
+    addCallbacks = (setUIScanning, setTopUpSuccessUI, setTopUpFailureUI) => {
         this.setUIScanning = setUIScanning;
+        this.setTopUpSuccessUI = setTopUpSuccessUI;
+        this.setTopUpFailureUI = setTopUpFailureUI;
+    }
+
+    resetMeterInfo = () => {
+        this.meter = {
+            meterId: "",
+            meterName: "",
+            isTransparent: false,
+            response: "",
+            balance: ""
+        }
     }
 }
 

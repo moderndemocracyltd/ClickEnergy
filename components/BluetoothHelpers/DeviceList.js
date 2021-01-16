@@ -1,8 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import {
-    Text, View, StyleSheet,
-    Button, FlatList, TouchableHighlight,
-} from "react-native";
+import React from 'react';
+import { Text, View, StyleSheet, Button, FlatList, TouchableHighlight } from "react-native";
 import BluetoothService from '../../Services/BluetoothService';
 
 export default DeviceList = props => {
@@ -11,7 +8,9 @@ export default DeviceList = props => {
     return (
         <View style={styles.deviceList}>
             <View style={styles.header}>
-                <Text style={styles.text}>{scanning ? "Searching..." : "Search for near by meters"}</Text>
+                <Text style={styles.text}>
+                    {scanning ? "Searching..." : "Search for near by meters"}
+                </Text>
             </View>
             <View style={styles.content}>
                 {deviceList.length > 0 ?

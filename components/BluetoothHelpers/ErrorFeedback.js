@@ -1,12 +1,13 @@
 import React from 'react';
-import { Text, View, StyleSheet, Button } from "react-native";
+import { Text, View, StyleSheet, Button, Image } from "react-native";
 
 export default ErrorFeedback = props => {
     const { errorMessage, reset } = props;
     return (
         <View>
             <View style={styles.header}>
-                <Text style={styles.text}>An Error has occured...</Text>
+                <Image style={styles.image} source={require('../../img/error.png')}/>
+                <Text style={styles.text}>An Error has occured.</Text>
             </View>
             <Text style={styles.content}>{errorMessage}</Text>
             <View style={styles.footer}>
@@ -19,8 +20,9 @@ export default ErrorFeedback = props => {
 const styles = StyleSheet.create({
     header: {
         height: '10%',
-        paddingTop: '6%',
+        padding: '6%',
         display: 'flex',
+        flexDirection: 'row',
         alignItems: "center",
         backgroundColor: "#243a47",
         borderTopLeftRadius: 10,
@@ -29,6 +31,11 @@ const styles = StyleSheet.create({
     content: {
         padding: 20,
         height: '80%'
+    },
+    image: {
+        width: 30,
+        height: 30,
+        marginRight: 40
     },
     text: {
         color: 'white'
