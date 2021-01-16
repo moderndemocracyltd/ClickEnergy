@@ -3,63 +3,38 @@ import {
     StyleSheet, Text, View, Modal,
     Button, FlatList, TouchableOpacity,
     TouchableWithoutFeedback, TouchableHighlight, AppState,
-    Platform, PermissionsAndroid
 } from "react-native";
 import BluetoothService from "../Services/BluetoothService";
 
 export default BluetoothHandler = (props) => {
+
     const KEY_CODE = props?.keyCode || null;
+
     const [scanning, setScanning] = useState(false);
-    const [peripherals, setPeripherals] = useState([]);
+    const [list, setList] = useState([]);
     const [appState, setAppState] = useState('');
 
     useEffect(() => {
-        console.log("use effect scanning");
-        BluetoothService.isScanning = scanning
-    }, [scanning])
-
-    useEffect(() => {
         AppState.addEventListener("change", handleAppStateChange);
-        checkConnection();
-        setInterval(getConnectedDevices, 5000);
+        BluetoothService.addCallbacks(setList, setScanning);
 
+        const hasPermission = BluetoothService.checkPermission();
+
+        if (hasPermission) {
+            BluetoothService.setUpListeners();
+            BluetoothService.startScanning();
+            //setInterval(retrieveConnected, 1000);
+        }
         return cleanUp = () => {
             AppState.removeEventListener("change");
-            BluetoothService.stopListening();
+            BluetoothService.removeListeners();
         }
     }, []);
-
-    const getConnectedDevices = async () => {
-        const peripherals = await BluetoothService.retrieveConnected();
-        setPeripherals(peripherals);
-    }
-
-    const checkConnection = async () => {
-        if (Platform.OS === 'android' && Platform.Version >= 23) {
-            const result = await PermissionsAndroid.check(PermissionsAndroid.PERMISSIONS.ACCESS_FINE_LOCATION)
-            if (result) {
-                console.log("Permission is OK");
-                BluetoothService.startListening();
-            } else {
-                const result = await PermissionsAndroid.request(PermissionsAndroid.PERMISSIONS.ACCESS_FINE_LOCATION)
-                if (result) {
-                    console.log("User accept");
-                    BluetoothService.startListening();
-                } else {
-                    console.log("User refuse");
-                }
-            }
-        }
-        if (Platform.OS === 'ios') {
-            BluetoothService.startListening();
-        }
-    }
 
     const handleAppStateChange = async nextAppState => {
         try {
             if (appState.match(/inactive|background/) && nextAppState === "active") {
-                const peripherals = await BluetoothService.retrieveConnected();
-                setPeripherals(peripherals);
+                await BluetoothService.retrieveConnected();
                 setAppState(nextAppState);
             }
         } catch (error) {
@@ -67,17 +42,13 @@ export default BluetoothHandler = (props) => {
         }
     }
 
-    const test = async peripheral => {
+    const connectToDevice = async peripheral => {
         try {
             if (peripheral) {
                 if (peripheral.connected) {
                     await BluetoothService.disconnectFromDevice(peripheral);
                 } else {
-                    const response = await BluetoothService.connectToDevice(peripheral);
-                    if (response) {
-                        const peripherals = await BluetoothService.retrieveConnected();
-                        setPeripherals(peripherals);
-                    }
+                    await BluetoothService.connectToDevice(peripheral);
                 }
             }
         } catch (error) {
@@ -88,7 +59,7 @@ export default BluetoothHandler = (props) => {
     const renderItem = (item) => {
         const color = item.connected ? 'green' : '#fff';
         return (
-            <TouchableHighlight onPress={() => test(item)}>
+            <TouchableHighlight onPress={() => connectToDevice(item)}>
                 <View style={[styles.row, { backgroundColor: color }]}>
                     <Text style={styles.deviceName}>{item.name}</Text>
                     <Text style={styles.deviceRSI}>RSSI: {item.rssi}</Text>
@@ -96,16 +67,13 @@ export default BluetoothHandler = (props) => {
                     {item.connected &&
                         <Button
                             title="Send Data"
-                            onPress={() => BluetoothService.sendDataToDevice(item, "")}
+                            onPress={() => BluetoothService.sendDataToDevice(item, KEY_CODE)}
                         />
                     }
                 </View>
             </TouchableHighlight>
         );
     }
-
-    const list = BluetoothService.listConnectedDevices();
-    const btnScanTitle = `Scan Bluetooth (${scanning ? "on" : "off"})`;
 
     return (
         <View style={styles.modalBackground}>
@@ -115,11 +83,8 @@ export default BluetoothHandler = (props) => {
                         <View style={styles.modalContent}>
                             <View>
                                 <Button
-                                    title={btnScanTitle}
-                                    onPress={() => {
-                                        setScanning(!scanning);
-                                        BluetoothService.startScanning()
-                                    }}
+                                    title={`Scan Bluetooth (${scanning ? "on" : "off"})`}
+                                    onPress={() => setScanning(!scanning)}
                                 />
                             </View>
                             <View style={{ margin: 10 }}>
@@ -173,16 +138,16 @@ const styles = StyleSheet.create({
         padding: 10
     },
     deviceRSI: {
-        fontSize: 10, 
-        textAlign: 'center', 
-        color: '#333333', 
+        fontSize: 10,
+        textAlign: 'center',
+        color: '#333333',
         padding: 2
     },
     deviceID: {
-        fontSize: 8, 
-        textAlign: 'center', 
-        color: '#333333', 
-        padding: 2, 
+        fontSize: 8,
+        textAlign: 'center',
+        color: '#333333',
+        padding: 2,
         paddingBottom: 20
     }
 });

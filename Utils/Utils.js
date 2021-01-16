@@ -22,3 +22,11 @@ export const bytesToHex = (bytes) => {
     }
     return hex.join("");
 }
+
+export const processTopUpCode = code => {
+    
+}
+
+const timeout = (ms) => {
+    return new Promise(resolve => setTimeout(resolve, ms));
+}

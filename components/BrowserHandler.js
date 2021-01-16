@@ -84,8 +84,10 @@ export default BrowserHandler = (props) => {
             }
 
             if (url.includes(baseURL) && url.includes("Payment-Success")) {
-                const js = `(function(){
-                    window.ReactNativeWebView.postMessage("Hello");
+                const js = `
+                (function(){
+                    const keyCode = document.getElementById('');
+                    window.ReactNativeWebView.postMessage(keyCode);
                     true;
                 })()`
                 WEBVIEW_REF.current.injectJavaScript(js);
