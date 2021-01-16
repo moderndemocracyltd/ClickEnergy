@@ -5,7 +5,7 @@ import { WebView } from 'react-native-webview';
 import CookieService from '../Services/CookieService';
 import BluetoothHandler from "./BluetoothModal";
 
-export default BrowserHandler = (props) => {
+export default BrowserHandler = props => {
 
     const WEBVIEW_REF = useRef();
     const [baseURL, setbaseURl] = useState("");

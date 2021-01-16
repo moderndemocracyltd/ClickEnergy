@@ -4,13 +4,12 @@ import Buffer from 'buffer';
 import Constants from "../Utils/Contants";
 import { bytesToHex } from "../Utils/Utils";
 
-const blutoothManager = NativeModules.BleManager;
-const emitter = new NativeEventEmitter(blutoothManager);
-
 class BluetoothService {
     constructor() {
-        this.peripherals = new Map();
+        this.btModule = NativeModules.BleManager;
+        this.emitter = new NativeEventEmitter(this.btModule);
 
+        this.peripherals = new Map();
         this.scanning = false;
         this.isTransparent = false;
 
@@ -22,26 +21,28 @@ class BluetoothService {
     }
 
     setUpListeners = () => {
-        emitter.addListener("BleManagerStopScan", this.handleStopScan);
-        emitter.addListener("BleManagerDiscoverPeripheral", this.handleDiscoverPeripheral);
-        emitter.addListener("BleManagerDisconnectPeripheral", this.handleDisconnectedPeripheral);
-        emitter.addListener("BleManagerDidUpdateValueForCharacteristic", this.handleUpdateValueForCharacteristic);
+        this.emitter.addListener("BleManagerStopScan", this.handleStopScan);
+        this.emitter.addListener("BleManagerDiscoverPeripheral", this.handleDiscoverPeripheral);
+        this.emitter.addListener("BleManagerDisconnectPeripheral", this.handleDisconnectedPeripheral);
+        this.emitter.addListener("BleManagerDidUpdateValueForCharacteristic", this.handleUpdateValueForCharacteristic);
         BleManager.start({ showAlert: false });
     }
 
     removeListeners = () => {
-        emitter.removeListener("BleManagerStopScan");
-        emitter.removeListener("BleManagerDiscoverPeripheral");
-        emitter.removeListener("BleManagerDisconnectPeripheral");
-        emitter.removeListener("BleManagerDidUpdateValueForCharacteristic");
+        this.emitter.removeListener("BleManagerStopScan");
+        this.emitter.removeListener("BleManagerDiscoverPeripheral");
+        this.emitter.removeListener("BleManagerDisconnectPeripheral");
+        this.emitter.removeListener("BleManagerDidUpdateValueForCharacteristic");
     }
 
     startScanning = async () => {
         try {
             if (!this.scanning) {
                 console.log("Scanning...");
+                this.peripherals = new Map();
                 this.scanning = true;
-                await BleManager.scan([], 10, false);
+                this.setUIScanning(true);
+                await BleManager.scan([], 15, false);
             }
         } catch (error) {
             console.error(error);
@@ -50,13 +51,14 @@ class BluetoothService {
 
     handleStopScan = () => {
         this.scanning = false;
+        this.setUIScanning(false);
         console.log("Stopped scanning.");
     }
 
     handleDiscoverPeripheral = peripheral => {
         if (peripheral.name) {
+            console.log(peripheral.name);
             this.peripherals.set(peripheral.id, peripheral)
-            this.setUIList(Array.from(this.peripherals.values));
         }
     }
 
@@ -66,29 +68,23 @@ class BluetoothService {
         if (peripheral) {
             peripheral.connected = false;
             this.peripherals.set(peripheral.id, peripheral);
-            this.setUIList(Array.from(this.peripherals.values()));
         }
     }
 
     connectToDevice = async peripheral => {
-        return new Promise(async (resolve, reject) => {
-            try {
-                let device = this.peripherals.get(peripheral.id);
-                if (device) {
-                    const response = await BleManager.connect(peripheral.id);
-                    if (response) {
-                        console.log("Connected", peripheral.id);
-                        device.connected = true;
-                        this.peripherals.set(peripheral.id, device);
-                        this.setUIList(Array.from(this.peripherals.values()));
-                        resolve();
-                    }
+        try {
+            let device = this.peripherals.get(peripheral.id);
+            if (device) {
+                const response = await BleManager.connect(peripheral.id);
+                if (response) {
+                    console.log("Connected", peripheral.id);
+                    device.connected = true;
+                    this.peripherals.set(peripheral.id, device);
                 }
-            } catch (error) {
-                console.error("Error while connecting device:", error);
-                reject(error);
             }
-        })
+        } catch (error) {
+            console.error("Error while connecting device:", error);
+        }
     }
 
     disconnectFromDevice = async peripheral => {
@@ -98,7 +94,6 @@ class BluetoothService {
             if (device) {
                 device.connected = false;
                 this.peripherals.set(peripheral.id, device);
-                this.setUIList(Array.from(this.peripherals.values()));
                 return await BleManager.disconnect(peripheral.id);
             }
         } catch (error) {
@@ -109,11 +104,9 @@ class BluetoothService {
     retrieveConnected = async () => {
         try {
             const connectedResults = await BleManager.getConnectedPeripherals([]);
-
             for (let result of connectedResults) {
                 result.connected = true;
                 this.peripherals.set(result.id, result);
-                this.setUIList(Array.from(this.peripherals.values()));
             }
             return connectedResults;
         } catch (error) {
@@ -140,6 +133,7 @@ class BluetoothService {
         if (response.includes("ACCOUNT") && response.includes("#")) {
             const balance = response.split("#")[1];
             this.meterBalance = balance;
+            console.log("Meter balance: $",balance);
             await this.stopNotifying(data.peripheral);
         }
     }
@@ -161,11 +155,11 @@ class BluetoothService {
         }
     }
 
-    isScanning = () => {
-        return this.scanning;
+    getPeripherals = () => {
+        return this.peripherals;
     }
 
-    checkPermission = () => {
+    checkPermission = async () => {
         if (Platform.OS === 'android' && Platform.Version >= 23) {
             const result = await PermissionsAndroid.check(PermissionsAndroid.PERMISSIONS.ACCESS_FINE_LOCATION)
             if (result) {
@@ -210,7 +204,7 @@ class BluetoothService {
         //PARSE EACH DIGIT OF CODE AND PROCESS INTO PACKETS TO SEND TO METER
     }
 
-    killTransparentMode = meterId => {
+    killTransparentMode = async meterId => {
         const { SERVICE_UUID, RX, TX, BRING_FREEDOM_OUT_OF_TRANS_MODE } = Constants;
         await BleManager.retrieveServices(meterId);
         await BleManager.startNotification(meterId, SERVICE_UUID, RX);
@@ -218,8 +212,7 @@ class BluetoothService {
         await BleManager.stopNotification(meterId, SERVICE_UUID, RX);
     }
 
-    addCallbacks = (setUIList, setUIScanning) => {
-        this.setUIList = setUIList;
+    addCallbacks = (setUIScanning) => {
         this.setUIScanning = setUIScanning;
     }
 }
