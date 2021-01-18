@@ -1,5 +1,5 @@
 class Meter {
-    constructor(){
+    constructor() {
         this.meterId = "";
         this.meterName = "";
         this.isTransparent = false;
@@ -7,55 +7,22 @@ class Meter {
         this.meterBalance = "";
     }
 
-    getMeterId() {
-        return this.meterId;
-    }
+    getMeterId = () => this.meterId;
+    getMeterName = () => this.meterName;
+    getMeterBalance = () => this.meterBalance;
+    getMeterResponse = () => this.meterResponse;
+    getIsTransparent = () => this.isTransparent;
 
-    getMeterName() {
-        return this.meterName;
-    }
+    setMeterId = id => { this.meterId = id }
+    setMeterName = name => { this.meterName = name }
+    setMeterBalance = balance => { this.meterBalance = balance }
+    setMeterResponse = meterResponse => { this.meterResponse = meterResponse }
+    setMeterIsTransparent = transparency => { this.isTransparent = transparency }
 
-    getMeterBalance() {
-        return this.meterBalance;
-    }
+    addMeterResponse = response => { this.meterResponse += response }
+    clearMeterResponse = () => { this.meterResponse = "" }
 
-    getMeterResponse() {
-        return this.meterResponse;
-    }
-
-    getIsTransparent() {
-        return this.isTransparent;
-    }
-
-    setMeterId(id) {
-        this.meterId = id;
-    }
-
-    setMeterName(name) {
-        this.meterName = name;
-    }
-
-    setMeterBalance(balance) {
-        this.meterBalance = balance;
-    }
-
-    setMeterResponse(meterResponse) {
-        this.meterResponse = meterResponse;
-    }
-
-    addMeterResponse(response) {
-        this.meterResponse += response;
-    }
-
-    clearMeterResponse(){
-        this.meterResponse = "";
-    }
-
-    setMeterIsTransparent(transparency) {
-        this.isTransparent = transparency;
-    }
-
-    resetMeterInfo(){
+    resetMeterInfo = () => {
         this.meterId = "";
         this.meterName = "";
         this.isTransparent = false;

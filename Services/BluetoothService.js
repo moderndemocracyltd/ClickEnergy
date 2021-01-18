@@ -19,6 +19,8 @@ class BluetoothService {
         this.setUIScanning = null;
     }
 
+    getPeripherals = () => this.peripherals;
+
     setUpListeners = () => {
         this.emitter.addListener("BleManagerStopScan", this.handleStopScan);
         this.emitter.addListener("BleManagerDiscoverPeripheral", this.handleDiscoverPeripheral);
@@ -38,10 +40,6 @@ class BluetoothService {
         this.setUIScanning = setUIScanning;
         this.setTopUpSuccessUI = setTopUpSuccessUI;
         this.setTopUpFailureUI = setTopUpFailureUI;
-    }
-
-    getPeripherals = () => {
-        return this.peripherals;
     }
 
     startScanning = async () => {
