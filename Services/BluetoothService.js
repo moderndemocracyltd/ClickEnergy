@@ -2,21 +2,14 @@ import { Platform, PermissionsAndroid, NativeEventEmitter, NativeModules } from 
 import BleManager from "react-native-ble-manager";
 import Buffer from "buffer";
 
-import Constants from "../Helpers/Contants";
 import { bytesToHex } from "../Helpers/Utils";
+import Constants from "../Helpers/Contants";
+import Meter from "../Helpers/Meter";
 
 class BluetoothService {
     constructor() {
         this.btModule = NativeModules.BleManager;
         this.emitter = new NativeEventEmitter(this.btModule);
-
-        this.meter = {
-            meterId: "",
-            meterName: "",
-            isTransparent: false,
-            response: "",
-            balance: ""
-        }
 
         this.peripherals = new Map();
         this.scanning = false;
@@ -41,6 +34,16 @@ class BluetoothService {
         this.emitter.removeListener("BleManagerDidUpdateValueForCharacteristic");
     }
 
+    addCallbacks = (setUIScanning, setTopUpSuccessUI, setTopUpFailureUI) => {
+        this.setUIScanning = setUIScanning;
+        this.setTopUpSuccessUI = setTopUpSuccessUI;
+        this.setTopUpFailureUI = setTopUpFailureUI;
+    }
+
+    getPeripherals = () => {
+        return this.peripherals;
+    }
+
     startScanning = async () => {
         try {
             if (!this.scanning) {
@@ -54,9 +57,15 @@ class BluetoothService {
         }
     }
 
-    handleStopScan = () => {
-        this.scanning = false;
-        this.setUIScanning(false);
+    handleStopScan = async () => {
+        try {
+            await BleManager.stopScan();
+            this.scanning = false;
+            this.setUIScanning(false);
+        } catch (error) {
+            console.error(error);
+            throw error;
+        }
     }
 
     handleDiscoverPeripheral = peripheral => {
@@ -79,8 +88,8 @@ class BluetoothService {
             if (device) {
                 await BleManager.connect(peripheral.id);
                 this.peripherals.set(peripheral.id, device);
-                this.meter.id = peripheral.id;
-                this.meter.name = peripheral.name;
+                Meter.setMeterId(peripheral.id);
+                Meter.setMeterName(peripheral.name);
             }
         } catch (error) {
             console.error("Error while connecting device:", error);
@@ -90,8 +99,9 @@ class BluetoothService {
 
     disconnectFromMeter = async () => {
         try {
-            if(this.meter.id) {
-                return await BleManager.disconnect(this.meter.id);
+            const meterId = Meter.getMeterId();
+            if (meterId) {
+                return await BleManager.disconnect(meterId);
             }
         } catch (error) {
             console.error("Error disconnecting device:", error);
@@ -116,24 +126,25 @@ class BluetoothService {
     handleUpdateValueForCharacteristic = async data => {
         const { TRANSPARENT_COMMAND_RESPONSE } = Constants;
         if (bytesToHex(data.value) === bytesToHex(TRANSPARENT_COMMAND_RESPONSE)) {
-            this.meter.isTransparent = true;
+            Meter.setMeterIsTransparent();
         } else {
             this.parseMeterResponse(data);
         }
     }
 
     parseMeterResponse = async (meterRes) => {
-        this.meter.response += `${bytesToHex(meterRes.value)}`;
-        const converted = Buffer.Buffer.from(this.meter.response, 'hex').toString();
+        Meter.addMeterResponse(`${bytesToHex(meterRes.value)}`);
+        
+        const converted = Buffer.Buffer.from(Meter.getMeterResponse(), 'hex').toString();
         const response = converted.split("").reverse().join("");
 
         if (response.includes("DAYS LEFT") || response.includes("NO DATA")) {
-            this.meter.response = "";
+            Meter.setMeterResponse("");
         }
 
         if (response.includes("ACCOUNT") && response.includes("#")) {
             const balance = response.split("#")[1];
-            this.meter.balance = balance;
+            Meter.setMeterBalance(balance);
             this.setTopUpSuccessUI(true);
             await this.stopNotifying(meterRes.peripheral);
         }
@@ -152,10 +163,6 @@ class BluetoothService {
         }
     }
 
-    getPeripherals = () => {
-        return this.peripherals;
-    }
-
     checkPermission = async () => {
         if (Platform.OS === 'android' && Platform.Version >= 23) {
             const result = await PermissionsAndroid.check(PermissionsAndroid.PERMISSIONS.ACCESS_FINE_LOCATION)
@@ -170,10 +177,6 @@ class BluetoothService {
             return true;
         }
         return false;
-    }
-
-    getMeterBalance = () => {
-        return this.meterBalance;
     }
 
     sendTransparentMessageToMeter = async meterId => {
@@ -235,22 +238,6 @@ class BluetoothService {
         } catch (error) {
             console.error(error);
             throw error;
-        }
-    }
-
-    addCallbacks = (setUIScanning, setTopUpSuccessUI, setTopUpFailureUI) => {
-        this.setUIScanning = setUIScanning;
-        this.setTopUpSuccessUI = setTopUpSuccessUI;
-        this.setTopUpFailureUI = setTopUpFailureUI;
-    }
-
-    resetMeterInfo = () => {
-        this.meter = {
-            meterId: "",
-            meterName: "",
-            isTransparent: false,
-            response: "",
-            balance: ""
         }
     }
 }

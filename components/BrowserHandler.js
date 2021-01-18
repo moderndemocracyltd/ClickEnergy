@@ -47,7 +47,7 @@ export default BrowserHandler = props => {
     const handlePostMessage = event => {
         const { data } = event.nativeEvent;
         setKeyCode(data);
-        setModalVisible(true);
+        showModal();
     }
 
     const displayError = () => {
@@ -98,6 +98,9 @@ export default BrowserHandler = props => {
         }
     }
 
+    const showModal = () => setModalVisible(true);
+    const hideModal = () => setModalVisible(false);
+
     return (
         <>
             {isLoading &&
@@ -123,9 +126,10 @@ export default BrowserHandler = props => {
                     onNavigationStateChange={handleNavigationChange}
                 />
             }
-            {!isLoading && modalVisible &&
+            {!isLoading &&
                 <BluetoothHandler
                     visible={modalVisible}
+                    dismissModal={() => { setModalVisible(false) }}
                     keyCode={KEY_CODE}
                 />
             }

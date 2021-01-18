@@ -39,6 +39,10 @@ class Meter {
         this.meterBalance = balance;
     }
 
+    setMeterResponse(meterResponse) {
+        this.meterResponse = meterResponse;
+    }
+
     addMeterResponse(response) {
         this.meterResponse += response;
     }
@@ -47,7 +51,7 @@ class Meter {
         this.meterResponse = "";
     }
 
-    setIsMeterTransparent(transparency) {
+    setMeterIsTransparent(transparency) {
         this.isTransparent = transparency;
     }
 

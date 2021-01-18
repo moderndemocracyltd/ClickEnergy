@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { StyleSheet, View, Modal, TouchableOpacity, TouchableWithoutFeedback, AppState } from "react-native";
+import { StyleSheet, View, Modal, TouchableOpacity, TouchableWithoutFeedback, AppState, Button } from "react-native";
 
 import DeviceList from './BluetoothHelpers/DeviceList';
 import TopUpHelper from './BluetoothHelpers/TopUpHelper';
@@ -8,9 +8,10 @@ import TopUpFailedFeedback from './BluetoothHelpers/TopUpFailedFeedback';
 import ErrorFeedback from "./BluetoothHelpers/ErrorFeedback";
 
 import BluetoothService from "../Services/BluetoothService";
+import Meter from "../Helpers/Meter";
 
 export default BluetoothHandler = (props) => {
-    const KEY_CODE = props?.keyCode || null;
+    const { keyCode = null, visible, dismissModal} = props;
 
     const [appState, setAppState] = useState('');
     const [scanning, setScanning] = useState(false);
@@ -78,7 +79,7 @@ export default BluetoothHandler = (props) => {
                 setShowDeviceList(false);
                 setIsToppingUp(true);
 
-                await BluetoothService.sendDataToDevice(peripheral, KEY_CODE);
+                await BluetoothService.sendDataToDevice(peripheral, keyCode);
                 setIsToppingUp(false);
                 setTopUpSuccess(true);
             }
@@ -101,7 +102,7 @@ export default BluetoothHandler = (props) => {
         try {
             await BluetoothService.disconnectFromMeter();
             BluetoothService.handleStopScan();
-            BluetoothService.resetMeterInfo();
+            Meter.resetMeterInfo();
             resetFlow();
         } catch (error) {
             setErrorMessage(error);
@@ -109,10 +110,11 @@ export default BluetoothHandler = (props) => {
     }
 
     return (
-        <View style={styles.modalBackground}>
-            <Modal visible={props.visible} animationType={'slide'} transparent={true}>
+        <View style={styles.modalBackground} >
+            <Modal visible={visible} animationType={'slide'} transparent={true}>
                 <TouchableOpacity style={styles.opactity}>
-                    <TouchableWithoutFeedback>
+                <Button title={"Close"} onPress={() => dismissModal()}/>
+                    <TouchableWithoutFeedback >
                         <View style={styles.modalContent}>
                             {showDeviceList &&
                                 <DeviceList
