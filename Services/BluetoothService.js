@@ -1,8 +1,7 @@
 import { Platform, PermissionsAndroid, NativeEventEmitter, NativeModules } from "react-native";
 import BleManager from "react-native-ble-manager";
-import Buffer from "buffer";
 
-import { bytesToHex } from "../Helpers/Utils";
+import { bytesToHex, getCRCResponse } from "../Helpers/Utils";
 import Constants from "../Helpers/Contants";
 import Meter from "../Helpers/Meter";
 
@@ -13,10 +12,14 @@ class BluetoothService {
 
         this.peripherals = new Map();
         this.scanning = false;
+        this.keepAliveInterval = null;
+        this.meterPackets = [];
 
-        this.setTopUpSuccessUI = null;
-        this.setTopUpFailureUI = null;
-        this.setUIScanning = null;
+        this.setIsTransparentUI = () => { };
+        this.startTopUpUI = () => { };
+        this.setTopUpSuccessUI = () => { };
+        this.setTopUpFailureUI = () => { };
+        this.setUIScanning = () => { };
     }
 
     getPeripherals = () => this.peripherals;
@@ -36,8 +39,10 @@ class BluetoothService {
         this.emitter.removeListener("BleManagerDidUpdateValueForCharacteristic");
     }
 
-    addCallbacks = (setUIScanning, setTopUpSuccessUI, setTopUpFailureUI) => {
+    addCallbacks = (setUIScanning, setIsTransparent, setStartTopUp, setTopUpSuccessUI, setTopUpFailureUI) => {
         this.setUIScanning = setUIScanning;
+        this.setIsTransparentUI = setIsTransparent;
+        this.startTopUpUI = setStartTopUp;
         this.setTopUpSuccessUI = setTopUpSuccessUI;
         this.setTopUpFailureUI = setTopUpFailureUI;
     }
@@ -47,7 +52,7 @@ class BluetoothService {
             if (!this.scanning) {
                 this.scanning = true;
                 this.setUIScanning(true);
-                await BleManager.scan([], 15, false);
+                await BleManager.scan([], 20, false);
             }
         } catch (error) {
             console.error(error);
@@ -86,8 +91,9 @@ class BluetoothService {
             if (device) {
                 await BleManager.connect(peripheral.id);
                 this.peripherals.set(peripheral.id, device);
-                Meter.setMeterId(peripheral.id);
-                Meter.setMeterName(peripheral.name);
+                Meter.setId(peripheral.id);
+                Meter.setName(peripheral.name);
+                Meter.setIsConnected(true);
             }
         } catch (error) {
             console.error("Error while connecting device:", error);
@@ -97,7 +103,7 @@ class BluetoothService {
 
     disconnectFromMeter = async () => {
         try {
-            const meterId = Meter.getMeterId();
+            const meterId = Meter.getId();
             if (meterId) {
                 return await BleManager.disconnect(meterId);
             }
@@ -123,41 +129,53 @@ class BluetoothService {
 
     handleUpdateValueForCharacteristic = async data => {
         const { TRANSPARENT_COMMAND_RESPONSE } = Constants;
+
+        console.log(bytesToHex(data.value));
+
         if (bytesToHex(data.value) === bytesToHex(TRANSPARENT_COMMAND_RESPONSE)) {
-            Meter.setMeterIsTransparent();
-        } else {
+            Meter.setIsTransparent();
+            this.setIsTransparentUI(true);
+            this.keepAliveInterval = setInterval(() => this.sendKeepAliveMessage(Meter.getId()), 50000);
+        }
+        else {
             this.parseMeterResponse(data);
         }
     }
 
-    parseMeterResponse = async (meterRes) => {
-        Meter.addMeterResponse(`${bytesToHex(meterRes.value)}`);
-        
-        const converted = Buffer.Buffer.from(Meter.getMeterResponse(), 'hex').toString();
-        const response = converted.split("").reverse().join("");
+    parseMeterResponse = async meterRes => {
+        Meter.addResponse(`${bytesToHex(meterRes.value)}`);
+        const response = Meter.getParsedResponse();
+        const raw = Meter.getRawResponse();
 
-        if (response.includes("DAYS LEFT") || response.includes("NO DATA")) {
-            Meter.setMeterResponse("");
+        if (response.includes("KEY CODE") && raw.includes("e5ff14aa0d")) {
+            console.log("Contains KeyCode");
+            Meter.setResponse("");
+            this.startTopUpUI(true);
+        }
+
+        if (response.includes("ACCEPTED")) {
+            console.log("Code Accepted!");
+        }
+
+        if (response.includes("REJECTED")) {
+            console.log("Code Rejected!");
+        }
+
+        if (response.includes(Meter.setExpectedCRCresponse())) {
+            console.log("Got expected Result");
+            const nextPacket = Meter.getNextPacket();
+            Meter.setExpectedCRCresponse(nextPacket, Meter.getExpectedCRCresponse());
+            await this.sendPacket(nextPacket);
         }
 
         if (response.includes("ACCOUNT") && response.includes("#")) {
             const balance = response.split("#")[1];
-            Meter.setMeterBalance(balance);
-            this.setTopUpSuccessUI(true);
-            await this.stopNotifying(meterRes.peripheral);
+            Meter.setBalance(balance);
+            //this.setTopUpSuccessUI(true);
+            //await this.stopNotifying(meterRes.peripheral);
         }
-    }
-
-    sendDataToDevice = async (peripheral, data) => {
-        try {
-            const { id } = peripheral;
-
-            await this.sendTransparentMessageToMeter(id);
-            //await this.sendVendCode(data);
-            await this.sendGetAccountMessageToMeter(id);
-        } catch (error) {
-            console.error("Error sending data:", error);
-            throw error;
+        if (response.includes("DAYS LEFT") || response.includes("NO DATA")) {
+            Meter.setResponse("");
         }
     }
 
@@ -177,22 +195,36 @@ class BluetoothService {
         return false;
     }
 
-    sendTransparentMessageToMeter = async meterId => {
+    sendTransparentMessageToMeter = async () => {
+        const meterId = Meter.getId();
+        const { SERVICE_UUID, RX, TX, TRANSPARENT_COMMAND } = Constants;
         try {
-            const { SERVICE_UUID, RX, TX, TRANSPARENT_COMMAND } = Constants;
             await BleManager.retrieveServices(meterId);
             await BleManager.startNotification(meterId, SERVICE_UUID, RX);
             await BleManager.write(meterId, SERVICE_UUID, TX, TRANSPARENT_COMMAND);
-            await BleManager.stopNotification(meterId, SERVICE_UUID, RX);
         } catch (error) {
             console.error(error);
             throw error;
         }
     }
 
-    sendGetAccountMessageToMeter = async meterId => {
+    sendKeepAliveMessage = async () => {
+        const meterId = Meter.getId();
+        const { SERVICE_UUID, RX, TX, KEEP_ALIVE } = Constants;
         try {
-            const { SERVICE_UUID, RX, TX, GET_ACCOUNT_BALANCE } = Constants;
+            await BleManager.retrieveServices(meterId);
+            await BleManager.startNotification(meterId, SERVICE_UUID, RX);
+            await BleManager.write(meterId, SERVICE_UUID, TX, KEEP_ALIVE);
+        } catch (error) {
+            console.error(error);
+            throw error;
+        }
+    }
+
+    sendGetAccountMessageToMeter = async () => {
+        const meterId = Meter.getId();
+        const { SERVICE_UUID, RX, TX, GET_ACCOUNT_BALANCE } = Constants;
+        try {
             await BleManager.retrieveServices(meterId);
             await BleManager.startNotification(meterId, SERVICE_UUID, RX);
             await BleManager.write(meterId, SERVICE_UUID, TX, GET_ACCOUNT_BALANCE);
@@ -202,9 +234,10 @@ class BluetoothService {
         }
     }
 
-    stopNotifying = async meterId => {
+    stopNotifying = async () => {
+        const meterId = Meter.getId();
+        const { SERVICE_UUID, RX } = Constants;
         try {
-            const { SERVICE_UUID, RX } = Constants;
             await BleManager.stopNotification(meterId, SERVICE_UUID, RX);
         } catch (error) {
             console.error(error);
@@ -212,27 +245,52 @@ class BluetoothService {
         }
     }
 
-    sendVendCode = async (meterId, code) => {
+    sendTopUpRequest = async () => {
+        const meterId = Meter.getId();
+        const { SERVICE_UUID, RX, TX, START_TOP_UP } = Constants;
         try {
-            const { SERVICE_UUID, RX, TX, START_TOP_UP } = Constants;
             await BleManager.retrieveServices(meterId);
             await BleManager.startNotification(meterId, SERVICE_UUID, RX);
             await BleManager.write(meterId, SERVICE_UUID, TX, START_TOP_UP);
-
-            //PARSE EACH DIGIT OF CODE AND PROCESS INTO PACKETS TO SEND TO METER
         } catch (error) {
             console.error(error);
             throw error;
         }
     }
 
-    killTransparentMode = async meterId => {
+    startTopUp = async () => {
         try {
-            const { SERVICE_UUID, RX, TX, BRING_FREEDOM_OUT_OF_TRANS_MODE } = Constants;
+            const firstPacket = Meter.getNextPacket();
+            const res = getCRCResponse(firstPacket, Meter.getExpectedCRCresponse());
+            Meter.setExpectedCRCresponse(res);
+            await this.sendPacket(firstPacket);
+        } catch (error) {
+            console.error(error);
+            throw error;
+        }
+    }
+
+    sendPacket = async packet => {
+        const meterId = Meter.getId();
+        const { SERVICE_UUID, RX, TX } = Constants;
+        try {
+            await BleManager.retrieveServices(meterId);
+            await BleManager.startNotification(meterId, SERVICE_UUID, RX);
+            console.log("Sending Packet:", packet);
+            await BleManager.write(meterId, SERVICE_UUID, TX, packet);
+        } catch (error) {
+            console.error(error);
+            throw error;
+        }
+    }
+
+    killTransparentMode = async () => {
+        const meterId = Meter.getId();
+        const { SERVICE_UUID, RX, TX, BRING_FREEDOM_OUT_OF_TRANS_MODE } = Constants;
+        try {
             await BleManager.retrieveServices(meterId);
             await BleManager.startNotification(meterId, SERVICE_UUID, RX);
             await BleManager.write(meterId, SERVICE_UUID, TX, BRING_FREEDOM_OUT_OF_TRANS_MODE);
-            await BleManager.stopNotification(meterId, SERVICE_UUID, RX);
         } catch (error) {
             console.error(error);
             throw error;

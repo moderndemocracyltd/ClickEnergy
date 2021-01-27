@@ -1,7 +1,7 @@
 import React from 'react';
 import { Text, View, StyleSheet, Button, Image } from "react-native";
 
-import BluetoothService from "../../Services/BluetoothService";
+import Meter from "../../Helpers/Meter";
 import SuccessGIF from "../../img/success.gif";
 
 export default TopUpSuccessFeedback = props => {
@@ -14,7 +14,7 @@ export default TopUpSuccessFeedback = props => {
             </View>
             <View style={styles.content}>
                 <Image style={styles.image} source={SuccessGIF} />
-                <Text>Your current balance is: {BluetoothService.meter.balance}</Text>
+                <Text>Your current balance is: {Meter.getBalance()}</Text>
             </View>
             <View style={styles.footer}>
                 <Button title={"Complete"} onPress={() => completionHandler()} />

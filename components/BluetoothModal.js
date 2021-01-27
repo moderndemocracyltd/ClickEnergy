@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { StyleSheet, View, Modal, TouchableOpacity, TouchableWithoutFeedback, AppState, Button } from "react-native";
+import { StyleSheet, View, Modal, TouchableOpacity, TouchableWithoutFeedback, AppState } from "react-native";
 
 import DeviceList from './BluetoothHelpers/DeviceList';
 import TopUpHelper from './BluetoothHelpers/TopUpHelper';
@@ -11,40 +11,44 @@ import BluetoothService from "../Services/BluetoothService";
 import Meter from "../Helpers/Meter";
 
 export default BluetoothHandler = (props) => {
-    const { keyCode = null, visible, dismissModal} = props;
-
+    const { keyCode, visible, dismissModal } = props;
     const [appState, setAppState] = useState('');
+
+    const [showDeviceList, setShowDeviceList] = useState(true);
     const [scanning, setScanning] = useState(false);
     const [list, setList] = useState([]);
 
-    const [error, setErrorMessage] = useState(null);
-    const [showDeviceList, setShowDeviceList] = useState(true);
+    const [meterConnected, setMeterConnected] = useState(false);
+    const [isTransparent, setIsTransparent] = useState(false);
+    const [startTopUp, setStartTopUp] = useState(false);
+
     const [isToppingUp, setIsToppingUp] = useState(false);
     const [topUpSuccess, setTopUpSuccess] = useState(false);
     const [topUpFailure, setTopUpFailure] = useState(false);
+    const [error, setErrorMessage] = useState(null);
 
     useEffect(() => {
         AppState.addEventListener("change", handleAppStateChange);
         BluetoothService.setUpListeners();
-        BluetoothService.addCallbacks(setScanning, setTopUpSuccess, setTopUpFailure);
-        checkPermissions();
+        BluetoothService.addCallbacks(
+            setScanning,
+            setIsTransparent,
+            setStartTopUp,
+            setTopUpSuccess,
+            setTopUpFailure
+        );
 
+        checkPermissions();
         return cleanUp = () => {
             AppState.removeEventListener("change");
             BluetoothService.removeListeners();
         }
     }, []);
 
-    useEffect(() => {
-        if (error) {
-            setScanning(false);
-            setList([]);
-            setShowDeviceList(false);
-            setIsToppingUp(false);
-            setTopUpSuccess(false);
-            setTopUpFailure(false);
-        }
-    }, [error]);
+    useEffect(() => { handleMeterConnection() }, [meterConnected]);
+    useEffect(() => { handleIsTransparent() }, [isTransparent]);
+    useEffect(() => { handleStartTopUp() }, [startTopUp]);
+    useEffect(() => { handleErrorMessage() }, [error]);
 
     const checkPermissions = async () => {
         try {
@@ -53,6 +57,53 @@ export default BluetoothHandler = (props) => {
                 setInterval(retrieveDevices, 1000);
             } else {
                 setErrorMessage("Bluetooth Permissions not set");
+            }
+        } catch (error) {
+            setErrorMessage(error);
+        }
+    }
+
+    const handleMeterConnection = async () => {
+        try {
+            if (meterConnected) {
+                console.log("Meter Connected");
+                setShowDeviceList(false);
+                setIsToppingUp(true);
+                await BluetoothService.sendTransparentMessageToMeter()
+            }
+        } catch (error) {
+            setErrorMessage(error);
+        }
+    }
+
+    const handleErrorMessage = () => {
+        if (error) {
+            setScanning(false);
+            setList([]);
+            setShowDeviceList(false);
+            setIsToppingUp(false);
+            setTopUpSuccess(false);
+            setTopUpFailure(false);
+        }
+    }
+
+    const handleIsTransparent = async () => {
+        try {
+            if (isTransparent) {
+                console.log("Meter is Transparent");
+                await BluetoothService.sendTopUpRequest();
+            }
+        } catch (error) {
+            setErrorMessage(error);
+        }
+    }
+
+    const handleStartTopUp = async () => {
+        try {
+            if (startTopUp) {
+                console.log("Meter is Ready for Top Up");
+                Meter.setPackets(keyCode);
+                await BluetoothService.startTopUp();
             }
         } catch (error) {
             setErrorMessage(error);
@@ -71,24 +122,12 @@ export default BluetoothHandler = (props) => {
         }
     }
 
-    const connectToDevice = async peripheral => {
-        try {
-            if (peripheral) {
-                BluetoothService.handleStopScan();
-                await BluetoothService.connectToDevice(peripheral);
-                setShowDeviceList(false);
-                setIsToppingUp(true);
-
-                await BluetoothService.sendDataToDevice(peripheral, keyCode);
-                setIsToppingUp(false);
-                setTopUpSuccess(true);
-            }
-        } catch (error) {
-            setErrorMessage(error);
-        }
-    }
-
-    const resetFlow = () => {
+    const resetFlow = async () => {
+        await BluetoothService.killTransparentMode();
+        await BluetoothService.stopNotifying();
+        await BluetoothService.handleStopScan();
+        await BluetoothService.disconnectFromMeter();
+        
         setScanning(false);
         setList([]);
         setErrorMessage(null);
@@ -101,7 +140,7 @@ export default BluetoothHandler = (props) => {
     const topUpCompletionHandler = async () => {
         try {
             await BluetoothService.disconnectFromMeter();
-            BluetoothService.handleStopScan();
+            await BluetoothService.handleStopScan();
             Meter.resetMeterInfo();
             resetFlow();
         } catch (error) {
@@ -110,10 +149,9 @@ export default BluetoothHandler = (props) => {
     }
 
     return (
-        <View style={styles.modalBackground} >
+        <View style={visible ? styles.modalBackground : {}}>
             <Modal visible={visible} animationType={'slide'} transparent={true}>
-                <TouchableOpacity style={styles.opactity}>
-                <Button title={"Close"} onPress={() => dismissModal()}/>
+                <TouchableOpacity style={styles.opactity} onPress={dismissModal}>
                     <TouchableWithoutFeedback >
                         <View style={styles.modalContent}>
                             {showDeviceList &&
@@ -121,7 +159,8 @@ export default BluetoothHandler = (props) => {
                                     setScanning={setScanning}
                                     scanning={scanning}
                                     deviceList={list}
-                                    connectToDevice={connectToDevice}
+                                    setError={setErrorMessage}
+                                    setMeterConnected={setMeterConnected}
                                 />
                             }
                             {isToppingUp &&
@@ -135,7 +174,9 @@ export default BluetoothHandler = (props) => {
                                 />
                             }
                             {topUpFailure &&
-                                <TopUpFailedFeedback />
+                                <TopUpFailedFeedback
+
+                                />
                             }
                             {error &&
                                 <ErrorFeedback

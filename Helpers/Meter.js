@@ -1,33 +1,53 @@
+import Buffer from "buffer";
+import { processTopUpCode } from '../Helpers/Utils';
+
 class Meter {
     constructor() {
-        this.meterId = "";
-        this.meterName = "";
+        this.id = "";
+        this.name = "";
         this.isTransparent = false;
-        this.meterResponse = "";
-        this.meterBalance = "";
+        this.isConnected = false;
+        this.response = "";
+        this.balance = "";
+        this.packets = [];
+        this.expectedCRCresponse = 0x0000;
     }
 
-    getMeterId = () => this.meterId;
-    getMeterName = () => this.meterName;
-    getMeterBalance = () => this.meterBalance;
-    getMeterResponse = () => this.meterResponse;
+    getId = () => this.id;
+    getName = () => this.name;
+    getBalance = () => this.balance;
+    getIsConnected = () => this.isConnected;
     getIsTransparent = () => this.isTransparent;
+    getPackets = () => this.packets;
+    getNextPacket = () => this.packets.shift();
+    getExpectedCRCresponse = () => this.expectedCRCresponse;
+    getRawResponse = () => this.response;
+    getParsedResponse = () => {
+        const converted = Buffer.Buffer.from(this.response, 'hex').toString();
+        const response = converted.split("").reverse().join("");
+        return response;
+    }
 
-    setMeterId = id => { this.meterId = id }
-    setMeterName = name => { this.meterName = name }
-    setMeterBalance = balance => { this.meterBalance = balance }
-    setMeterResponse = meterResponse => { this.meterResponse = meterResponse }
-    setMeterIsTransparent = transparency => { this.isTransparent = transparency }
-
-    addMeterResponse = response => { this.meterResponse += response }
-    clearMeterResponse = () => { this.meterResponse = "" }
+    setId = id => { this.id = id }
+    setName = name => { this.name = name }
+    setBalance = balance => { this.balance = balance }
+    setResponse = response => { this.response = response }
+    addResponse = response => { this.response += response }
+    clearResponse = () => { this.response = "" }
+    setIsConnected = isConnected => { this.isConnected = isConnected }
+    setIsTransparent = transparency => { this.isTransparent = transparency }
+    setPackets = topUpCode => { this.packets = processTopUpCode(topUpCode) }
+    setExpectedCRCresponse = expected => { this.expectedCRCresponse = expected }
 
     resetMeterInfo = () => {
-        this.meterId = "";
-        this.meterName = "";
+        this.id = "";
+        this.name = "";
         this.isTransparent = false;
-        this.meterResponse = "";
-        this.meterBalance = "";
+        this.isConnected = false;
+        this.response = "";
+        this.balance = "";
+        this.packets = [];
+        this.expectedResponse = "";
     }
 }
 

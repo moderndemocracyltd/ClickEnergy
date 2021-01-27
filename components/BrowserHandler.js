@@ -1,6 +1,6 @@
 
 import React, { useEffect, useState, useRef } from 'react';
-import { BackHandler, Linking, ActivityIndicator } from 'react-native';
+import { BackHandler, Linking, ActivityIndicator, Alert } from 'react-native';
 import { WebView } from 'react-native-webview';
 import CookieService from '../Services/CookieService';
 import BluetoothHandler from "./BluetoothModal";
@@ -11,13 +11,15 @@ export default BrowserHandler = props => {
     const [baseURL, setbaseURl] = useState("");
     const [viewSource, setViewSource] = useState("");
     const [isLoading, setIsLoading] = useState(true);
-    const [modalVisible, setModalVisible] = useState(true); // KEEP TRUE to test bluetooth Modal/connection without having to top-up
+    const [modalVisible, setModalVisible] = useState(false); // KEEP TRUE to test bluetooth Modal/connection without having to top-up
     const [KEY_CODE, setKeyCode] = useState(null);
 
-    useEffect(() => {
-        setUpView();
-        BackHandler.addEventListener("hardwareBackPress", handleBackButtonClick);
+    const showModal = () => setModalVisible(true);
+    const hideModal = () => setModalVisible(false);
 
+    useEffect(() => {
+        BackHandler.addEventListener("hardwareBackPress", handleBackButtonClick);
+        setUpView();
         return cleanUp = () => {
             BackHandler.removeEventListener("hardwareBackPress");
         }
@@ -46,6 +48,7 @@ export default BrowserHandler = props => {
 
     const handlePostMessage = event => {
         const { data } = event.nativeEvent;
+        console.log(data);
         setKeyCode(data);
         showModal();
     }
@@ -71,10 +74,26 @@ export default BrowserHandler = props => {
         }
     }
 
+    const startBluetoothTopUp = () => {
+        WEBVIEW_REF.current.injectJavaScript(`
+        const keyCode = document.getElementById('TUC').innerHTML;
+        window.ReactNativeWebView.postMessage(keyCode);
+        true;
+    `)
+    }
+
+    const displayTopUpAlert = () => {
+        Alert.alert("Bluetooth Top Up", "Would you like to send your Top Up code to your meter via Bluetooth?",
+            [
+                { text: 'Yes', onPress: () => startBluetoothTopUp() },
+                { text: 'No', onPress: () => { } }
+            ]
+        );
+    }
+
     const handleNavigationChange = async newNavState => {
         try {
-            const { url, title } = newNavState;
-
+            const { url, title, loading } = newNavState;
             if (title === "about:blank") {
                 WEBVIEW_REF.current.goForward();
                 return;
@@ -82,24 +101,14 @@ export default BrowserHandler = props => {
             if (!url.includes(baseURL) && !url.includes("judopay")) {
                 await openLinkExternally(url);
             }
-
-            if (url.includes(baseURL) && url.includes("Payment-Success")) {
-                const js = `
-                (function(){
-                    const keyCode = document.getElementById('');
-                    window.ReactNativeWebView.postMessage(keyCode);
-                    true;
-                })()`
-                WEBVIEW_REF.current.injectJavaScript(js);
+            if (url.includes(baseURL) && !loading && title === 'Click Energy - Payment Success') {
+                displayTopUpAlert();
             }
             await CookieService.saveCookies(url);
         } catch (error) {
             console.error(error);
         }
     }
-
-    const showModal = () => setModalVisible(true);
-    const hideModal = () => setModalVisible(false);
 
     return (
         <>
@@ -109,7 +118,7 @@ export default BrowserHandler = props => {
                     size="large"
                 />
             }
-            {!isLoading && !modalVisible &&
+            {!isLoading &&
                 <WebView
                     ref={WEBVIEW_REF}
                     useWebKit={true}
@@ -126,13 +135,11 @@ export default BrowserHandler = props => {
                     onNavigationStateChange={handleNavigationChange}
                 />
             }
-            {!isLoading &&
-                <BluetoothHandler
-                    visible={modalVisible}
-                    dismissModal={() => { setModalVisible(false) }}
-                    keyCode={KEY_CODE}
-                />
-            }
+            <BluetoothHandler
+                visible={modalVisible}
+                dismissModal={hideModal}
+                keyCode={KEY_CODE}
+            />
         </>
     );
 };

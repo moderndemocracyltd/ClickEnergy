@@ -1,10 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { Text, View, StyleSheet, Button, Image } from "react-native";
 
-import BluetoothService from '../../Services/BluetoothService';
-
 export default TopUpHelper = props => {
     const { reset } = props;
+    
     return (
         <View>
             <View style={styles.header}>
