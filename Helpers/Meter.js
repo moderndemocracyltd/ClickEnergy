@@ -10,6 +10,7 @@ class Meter {
         this.response = "";
         this.balance = "";
         this.packets = [];
+        
         this.expectedCRCresponse = 0x0000;
     }
 

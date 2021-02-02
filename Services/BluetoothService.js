@@ -261,8 +261,8 @@ class BluetoothService {
     startTopUp = async () => {
         try {
             const firstPacket = Meter.getNextPacket();
-            const res = getCRCResponse(firstPacket, Meter.getExpectedCRCresponse());
-            Meter.setExpectedCRCresponse(res);
+            // const res = getCRCResponse(firstPacket, Meter.getExpectedCRCresponse());
+            // Meter.setExpectedCRCresponse(res);
             await this.sendPacket(firstPacket);
         } catch (error) {
             console.error(error);
