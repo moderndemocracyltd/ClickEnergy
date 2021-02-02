@@ -1,26 +1,10 @@
-import React from 'react';
+import React, { useContext } from 'react';
 import { Text, View, StyleSheet, Button, FlatList, TouchableHighlight } from "react-native";
+import { BluetoothContext } from '../../context/BluetoothContext';
 import BluetoothService from '../../Services/BluetoothService';
-import Meter from "../../Helpers/Meter";
 
 export default DeviceList = props => {
-
-    const { scanning, deviceList, setErrorMessage, setMeterConnected } = props;
-
-    const connectToDevice = async peripheral => {
-        try {
-            if (peripheral) {
-                await BluetoothService.handleStopScan();
-                await BluetoothService.connectToDevice(peripheral);
-                if (Meter.getIsConnected()) {
-                    setMeterConnected(true);
-                }
-            }
-        } catch (error) {
-            setErrorMessage(error);
-        }
-    }
-
+    const { connectToDevice, list, scanning } = useContext(BluetoothContext);
     return (
         <View style={styles.deviceList}>
             <View style={styles.header}>
@@ -29,9 +13,9 @@ export default DeviceList = props => {
                 </Text>
             </View>
             <View style={styles.content}>
-                {deviceList.length > 0 ?
+                {list.length > 0 ?
                     <FlatList
-                        data={deviceList}
+                        data={list}
                         keyExtractor={item => item.id}
                         renderItem={({ item }) => (
                             <PeripheralItem

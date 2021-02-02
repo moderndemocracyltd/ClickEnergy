@@ -1,7 +1,7 @@
 import { Platform, PermissionsAndroid, NativeEventEmitter, NativeModules } from "react-native";
 import BleManager from "react-native-ble-manager";
 
-import { bytesToHex, getCRCResponse } from "../Helpers/Utils";
+import { bytesToHex } from "../Helpers/Utils";
 import Constants from "../Helpers/Contants";
 import Meter from "../Helpers/Meter";
 
@@ -39,12 +39,12 @@ class BluetoothService {
         this.emitter.removeListener("BleManagerDidUpdateValueForCharacteristic");
     }
 
-    addCallbacks = (setUIScanning, setIsTransparent, setStartTopUp, setTopUpSuccessUI, setTopUpFailureUI) => {
-        this.setUIScanning = setUIScanning;
-        this.setIsTransparentUI = setIsTransparent;
-        this.startTopUpUI = setStartTopUp;
-        this.setTopUpSuccessUI = setTopUpSuccessUI;
-        this.setTopUpFailureUI = setTopUpFailureUI;
+    addCallbacks = callbacks => {
+        this.setUIScanning = callbacks.setScanning;
+        this.setIsTransparentUI = callbacks.setIsTransparent;
+        this.startTopUpUI = callbacks.setStartTopUp;
+        this.setTopUpSuccessUI = callbacks.setTopUpSuccess;
+        this.setTopUpFailureUI = callbacks.setTopUpFailure;
     }
 
     startScanning = async () => {
@@ -171,7 +171,7 @@ class BluetoothService {
         if (response.includes("ACCOUNT") && response.includes("#")) {
             const balance = response.split("#")[1];
             Meter.setBalance(balance);
-            //this.setTopUpSuccessUI(true);
+            this.setTopUpSuccessUI(true);
             //await this.stopNotifying(meterRes.peripheral);
         }
         if (response.includes("DAYS LEFT") || response.includes("NO DATA")) {

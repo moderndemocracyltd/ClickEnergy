@@ -1,17 +1,18 @@
-import React from 'react';
+import React, { useContext } from 'react';
 import { Text, View, StyleSheet, Button, Image } from "react-native";
+import { BluetoothContext } from "../../context/BluetoothContext";
 
 export default ErrorFeedback = props => {
-    const { errorMessage, reset } = props;
+    const { error, resetFlow } = useContext(BluetoothContext);
     return (
         <View>
             <View style={styles.header}>
-                <Image style={styles.image} source={require('../../img/error.png')}/>
+                <Image style={styles.image} source={require('../../img/error.png')} />
                 <Text style={styles.text}>An Error has occured.</Text>
             </View>
-            <Text style={styles.content}>{errorMessage}</Text>
+            <Text style={styles.content}>{error}</Text>
             <View style={styles.footer}>
-                <Button title={"Retry"} onPress={() => reset()} />
+                <Button title={"Retry"} onPress={() => resetFlow()} />
             </View>
         </View>
     )

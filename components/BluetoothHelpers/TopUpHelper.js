@@ -1,20 +1,22 @@
-import React, { useState, useEffect } from 'react';
+import React, { useContext } from 'react';
 import { Text, View, StyleSheet, Button, Image } from "react-native";
+import { BluetoothContext } from "../../context/BluetoothContext";
+
+import LoadingGif from "../../img/loading.gif";
 
 export default TopUpHelper = props => {
-    const { reset } = props;
-    
+    const { resetFlow } = useContext(BluetoothContext);
     return (
         <View>
             <View style={styles.header}>
                 <Text style={styles.text}>Sending Code to Meter</Text>
             </View>
             <View style={styles.content}>
-                <Image style={styles.image} source={require('../../img/loading.gif')} />
+                <Image style={styles.image} source={LoadingGif} />
                 <Text>Please wait for the meter to respond.</Text>
             </View>
             <View style={styles.footer}>
-                <Button title={"Cancel"} onPress={() => reset()} />
+                <Button title={"Cancel"} onPress={() => resetFlow()} />
             </View>
         </View>
     )

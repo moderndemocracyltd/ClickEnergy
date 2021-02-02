@@ -1,12 +1,12 @@
-import React from 'react';
+import React, { useContext } from 'react';
 import { Text, View, StyleSheet, Button, Image } from "react-native";
+import { BluetoothContext } from "../../context/BluetoothContext";
 
 import Meter from "../../Helpers/Meter";
 import SuccessGIF from "../../img/success.gif";
 
 export default TopUpSuccessFeedback = props => {
-    const { reset, completionHandler } = props;
-
+    const { completionHandler } = useContext(BluetoothContext);
     return (
         <View>
             <View style={styles.header}>
