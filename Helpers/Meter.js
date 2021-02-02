@@ -14,6 +14,7 @@ class Meter {
         this.expectedCRCresponse = 0x0000;
     }
 
+    //GETTERS
     getId = () => this.id;
     getName = () => this.name;
     getBalance = () => this.balance;
@@ -29,6 +30,7 @@ class Meter {
         return response;
     }
 
+    //SETTERS
     setId = id => { this.id = id }
     setName = name => { this.name = name }
     setBalance = balance => { this.balance = balance }
