@@ -19,9 +19,11 @@ export const BluetoothContext = createContext({
 
 const useBluetoothContext = () => {
     const [appState, setAppState] = useState('');
+    
     const [showDeviceList, setShowDeviceList] = useState(true);
     const [scanning, setScanning] = useState(false);
     const [list, setList] = useState([]);
+
     const [meterConnected, setMeterConnected] = useState(false);
     const [isTransparent, setIsTransparent] = useState(false);
     const [startTopUp, setStartTopUp] = useState(false);
@@ -58,10 +60,8 @@ const useBluetoothContext = () => {
             if (peripheral) {
                 await BluetoothService.handleStopScan();
                 await BluetoothService.connectToDevice(peripheral);
-                console.log("MeterConnected!!!!");
-                console.log(Meter.getIsConnected());
                 if (Meter.getIsConnected()) {
-                    console.log(Meter.getIsConnected());
+                    console.log("MeterConnected!!");
                     setMeterConnected(true);
                 }
             }
@@ -128,11 +128,6 @@ const useBluetoothContext = () => {
         }
     }
 
-    const setVendCode = code => {
-        console.log("Context: Got Code");
-        setKeyCode(code);
-    }
-
     const resetFlow = async () => {
         await BluetoothService.killTransparentMode();
         await BluetoothService.stopNotifying();
@@ -170,6 +165,9 @@ const useBluetoothContext = () => {
         }
     }
 
+    const topUpSuccessHandler = () => setTopUpSuccess(true);
+    const toppingUpHandler = () => isToppingUp(true);
+
     return {
         showDeviceList,
         scanning,
@@ -181,7 +179,6 @@ const useBluetoothContext = () => {
         connectToDevice,
         resetFlow,
         topUpCompletionHandler,
-        setVendCode,
         setIsTransparent,
         setStartTopUp,
         setTopUpSuccess,

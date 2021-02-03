@@ -15,12 +15,19 @@ export default BluetoothHandler = (props) => {
     const { showDeviceList, isToppingUp, topUpSuccess, topUpFailure, error } = useContext(BluetoothContext);
 
     useEffect(() => {
+        if (isToppingUp) {
+            console.log("IsTopping Up:", isToppingUp);
+        }
+    }, [isToppingUp]);
+
+    useEffect(() => {
         if (keyCode) {
             Meter.setPackets(keyCode);
         }
     }, [keyCode]);
 
     return (
+        
         <View style={visible ? styles.modalBackground : {}}>
             <Modal visible={visible} animationType={'slide'} transparent={true}>
                 <TouchableOpacity style={styles.opactity} onPress={dismissModal}>
