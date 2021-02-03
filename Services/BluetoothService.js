@@ -1,16 +1,30 @@
-import { NativeEventEmitter, NativeModules } from "react-native";
+import { Platform, PermissionsAndroid, NativeEventEmitter, NativeModules } from "react-native";
 import BleManager from "react-native-ble-manager";
-import Buffer from "buffer";
+
+import { bytesToHex } from "../Helpers/Utils";
+import Constants from "../Helpers/Contants";
+import Meter from "../Helpers/Meter";
 
 class BluetoothService {
     constructor() {
-        this.blutoothManager = NativeModules.BleManager;
-        this.emitter = new NativeEventEmitter(this.blutoothManager);
-        this.scanning = false;
+        this.btModule = NativeModules.BleManager;
+        this.emitter = new NativeEventEmitter(this.btModule);
+
         this.peripherals = new Map();
+        this.scanning = false;
+        this.keepAliveInterval = null;
+        this.meterPackets = [];
+
+        this.setIsTransparentUI = () => { };
+        this.startTopUpUI = () => { };
+        this.setTopUpSuccessUI = () => { };
+        this.setTopUpFailureUI = () => { };
+        this.setUIScanning = () => { };
     }
 
-    startListening = () => {
+    getPeripherals = () => this.peripherals;
+
+    setUpListeners = () => {
         this.emitter.addListener("BleManagerStopScan", this.handleStopScan);
         this.emitter.addListener("BleManagerDiscoverPeripheral", this.handleDiscoverPeripheral);
         this.emitter.addListener("BleManagerDisconnectPeripheral", this.handleDisconnectedPeripheral);
@@ -18,182 +32,270 @@ class BluetoothService {
         BleManager.start({ showAlert: false });
     }
 
-    stopListening = () => {
+    removeListeners = () => {
         this.emitter.removeListener("BleManagerStopScan");
         this.emitter.removeListener("BleManagerDiscoverPeripheral");
         this.emitter.removeListener("BleManagerDisconnectPeripheral");
         this.emitter.removeListener("BleManagerDidUpdateValueForCharacteristic");
     }
 
+    addCallbacks = callbacks => {
+        this.setUIScanning = callbacks.setScanning;
+        this.setIsTransparentUI = callbacks.setIsTransparent;
+        this.startTopUpUI = callbacks.setStartTopUp;
+        this.setTopUpSuccessUI = callbacks.setTopUpSuccess;
+        this.setTopUpFailureUI = callbacks.setTopUpFailure;
+    }
+
     startScanning = async () => {
         try {
             if (!this.scanning) {
-                console.log("Scanning...");
                 this.scanning = true;
-                await BleManager.scan([], 30, false);
+                this.setUIScanning(true);
+                await BleManager.scan([], 20, false);
             }
         } catch (error) {
             console.error(error);
+            throw error;
         }
     }
 
-    handleStopScan = () => {
-        this.scanning = false;
-        console.log("Stopped scanning.");
+    handleStopScan = async () => {
+        try {
+            await BleManager.stopScan();
+            this.scanning = false;
+            this.setUIScanning(false);
+        } catch (error) {
+            console.error(error);
+            throw error;
+        }
     }
 
     handleDiscoverPeripheral = peripheral => {
-        let local = this.peripherals;
-
         if (peripheral.name) {
-            local.set(peripheral.id, peripheral);
-            this.peripherals = local;
+            this.peripherals.set(peripheral.id, peripheral)
         }
     }
 
     handleDisconnectedPeripheral = data => {
-        let local = this.peripherals;
-        let peripheral = local.get(data.peripheral);
-
+        let peripheral = this.peripherals.get(data.peripheral);
         if (peripheral) {
             peripheral.connected = false;
-            local.set(peripheral.id, peripheral);
-            this.peripherals = local;
+            this.peripherals.set(peripheral.id, peripheral);
         }
     }
 
-    handleUpdateValueForCharacteristic = data => {
-        console.log(`Received data from '${data.peripheral}' characteristic '${data.characteristic}`, data.value);
+    connectToDevice = async peripheral => {
+        try {
+            let device = this.peripherals.get(peripheral.id);
+            if (device) {
+                await BleManager.connect(peripheral.id);
+                this.peripherals.set(peripheral.id, device);
+                Meter.setId(peripheral.id);
+                Meter.setName(peripheral.name);
+                Meter.setIsConnected(true);
+            }
+        } catch (error) {
+            console.error("Error while connecting device:", error);
+            throw error;
+        }
+    }
+
+    disconnectFromMeter = async () => {
+        try {
+            const meterId = Meter.getId();
+            if (meterId) {
+                return await BleManager.disconnect(meterId);
+            }
+        } catch (error) {
+            console.error("Error disconnecting device:", error);
+            throw error;
+        }
     }
 
     retrieveConnected = async () => {
         try {
             const connectedResults = await BleManager.getConnectedPeripherals([]);
-
-            if (connectedResults.length == 0) {
-                console.log("No Devices Connected");
-            }
-
-            let local = this.peripherals;
             for (let result of connectedResults) {
                 result.connected = true;
-                local.set(result.id, result);
-                this.peripherals = local;
+                this.peripherals.set(result.id, result);
             }
-            return connectedResults
+            return connectedResults;
         } catch (error) {
             console.error(error);
+            throw error;
         }
     }
 
-    disconnectFromDevice = async peripheral => {
-        try {
-            let local = this.peripherals;
-            let device = local.get(peripheral.id);
+    handleUpdateValueForCharacteristic = async data => {
+        const { TRANSPARENT_COMMAND_RESPONSE } = Constants;
 
-            if (device) {
-                device.connected = false;
-                local.set(peripheral.id, device);
-                this.peripherals = local;
-                return await BleManager.disconnect(peripheral.id);
+        console.log(bytesToHex(data.value));
+
+        if (bytesToHex(data.value) === bytesToHex(TRANSPARENT_COMMAND_RESPONSE)) {
+            Meter.setIsTransparent();
+            this.setIsTransparentUI(true);
+            this.keepAliveInterval = setInterval(() => this.sendKeepAliveMessage(Meter.getId()), 50000);
+        }
+        else {
+            this.parseMeterResponse(data);
+        }
+    }
+
+    parseMeterResponse = async meterRes => {
+        Meter.addResponse(`${bytesToHex(meterRes.value)}`);
+        const response = Meter.getParsedResponse();
+        const raw = Meter.getRawResponse();
+
+        if (response.includes("KEY CODE") && raw.includes("e5ff14aa0d")) {
+            console.log("Contains KeyCode");
+            Meter.setResponse("");
+            this.startTopUpUI(true);
+        }
+
+        if (response.includes("ACCEPTED")) {
+            console.log("Code Accepted!");
+        }
+
+        if (response.includes("REJECTED")) {
+            console.log("Code Rejected!");
+        }
+
+        if (response.includes(Meter.setExpectedCRCresponse())) {
+            console.log("Got expected Result");
+            const nextPacket = Meter.getNextPacket();
+            Meter.setExpectedCRCresponse(nextPacket, Meter.getExpectedCRCresponse());
+            await this.sendPacket(nextPacket);
+        }
+
+        if (response.includes("ACCOUNT") && response.includes("#")) {
+            const balance = response.split("#")[1];
+            Meter.setBalance(balance);
+            this.setTopUpSuccessUI(true);
+            //await this.stopNotifying(meterRes.peripheral);
+        }
+        if (response.includes("DAYS LEFT") || response.includes("NO DATA")) {
+            Meter.setResponse("");
+        }
+    }
+
+    checkPermission = async () => {
+        if (Platform.OS === 'android' && Platform.Version >= 23) {
+            const result = await PermissionsAndroid.check(PermissionsAndroid.PERMISSIONS.ACCESS_FINE_LOCATION)
+            if (result) {
+                return true;
+            } else {
+                const result = await PermissionsAndroid.request(PermissionsAndroid.PERMISSIONS.ACCESS_FINE_LOCATION)
+                return result ? true : false;
             }
-        } catch (error) {
-            console.error("Error disconnecting device:", error);
         }
+        if (Platform.OS === 'ios') {
+            return true;
+        }
+        return false;
     }
 
-    sendDataToDevice = async (peripheral, data) => {
+    sendTransparentMessageToMeter = async () => {
+        const meterId = Meter.getId();
+        const { SERVICE_UUID, RX, TX, TRANSPARENT_COMMAND } = Constants;
         try {
-            const Rx = "49535343-1E4D-4BD9-BA61-23C647249616";
-            const Tx = "49535343-8841-43F4-A8D4-ECBE34729BB3";
-
-            const enableTransparent = this.convertCodeToByteArray("55 BB 01 44");
-            const getAccountCommand = this.convertCodeToByteArray("C2 31");
-            const keepAliveCommand = this.convertCodeToByteArray("55 BB 03 42");
-
-            const { id } = peripheral;
-            let peripheralInfo = await BleManager.retrieveServices(id);
-            const primaryService = peripheralInfo.services[1];
-
-            setInterval(async () => {
-                await BleManager.write(id, primaryService, Rx, keepAliveCommand);
-                console.log("Keep Alive response");
-            }, 60000);
-            
-            //Enable Transparent
-            peripheralInfo = await BleManager.retrieveServices(id);
-            await BleManager.startNotification(id, primaryService, Rx);
-            await BleManager.write(id, primaryService, Rx, enableTransparent);
-            await timeout(2000);
-            
-            //Try to Read from Rx
-            await BleManager.startNotification(id, primaryService, Rx);
-            const readData = await BleManager.read(id, primaryService, Rx);
-
-            console.log(readData);
-            console.log("Pair response");
-
-            //Notify to read account
-            await BleManager.startNotification(id, primaryService, Rx);
-            peripheralInfo = await BleManager.retrieveServices(id);
-            
-            //Read Account
-            await BleManager.write(id, primaryService, Rx, getAccountCommand);
-
-            //Notify to read data
-            await BleManager.startNotification(id, primaryService, Rx);
-            peripheralInfo = await BleManager.retrieveServices(id);
-
-            // const readData = await BleManager.read(id, primaryService, Rx);
-            // console.log(readData);
+            await BleManager.retrieveServices(meterId);
+            await BleManager.startNotification(meterId, SERVICE_UUID, RX);
+            await BleManager.write(meterId, SERVICE_UUID, TX, TRANSPARENT_COMMAND);
         } catch (error) {
-            console.error("Error sending data:", error);
+            console.error(error);
+            throw error;
         }
     }
 
-    connectToDevice = async peripheral => {
-        return new Promise(async (resolve, reject) => {
-            try {
-                let local = this.peripherals;
-                let device = local.get(peripheral.id);
-
-                if (device) {
-                    const response = await BleManager.connect(peripheral.id);
-                    if (response) {
-                        console.log("Connected", peripheral.id);
-                        device.connected = true;
-                        local.set(peripheral.id, device);
-                        this.peripherals = local;
-                        resolve();
-                    }
-                }
-            } catch (error) {
-                console.error("Error while connecting device:", error);
-                reject(error);
-            }
-        })
-    }
-
-    listConnectedDevices = () => {
-        return Array.from(this.peripherals.values())
-    }
-
-    isScanning = () => {
-        return this.scanning;
-    }
-
-    convertCodeToByteArray = code => {
-        let bytes = [];
-        for (const index in code) {
-            const char = code.charCodeAt(index);
-            bytes = bytes.concat([char & 0xff, char / 256 >>> 0]);
+    sendKeepAliveMessage = async () => {
+        const meterId = Meter.getId();
+        const { SERVICE_UUID, RX, TX, KEEP_ALIVE } = Constants;
+        try {
+            await BleManager.retrieveServices(meterId);
+            await BleManager.startNotification(meterId, SERVICE_UUID, RX);
+            await BleManager.write(meterId, SERVICE_UUID, TX, KEEP_ALIVE);
+        } catch (error) {
+            console.error(error);
+            throw error;
         }
-        return bytes;
     }
-}
 
-const timeout = (ms) => {
-    return new Promise(resolve => setTimeout(resolve, ms));
+    sendGetAccountMessageToMeter = async () => {
+        const meterId = Meter.getId();
+        const { SERVICE_UUID, RX, TX, GET_ACCOUNT_BALANCE } = Constants;
+        try {
+            await BleManager.retrieveServices(meterId);
+            await BleManager.startNotification(meterId, SERVICE_UUID, RX);
+            await BleManager.write(meterId, SERVICE_UUID, TX, GET_ACCOUNT_BALANCE);
+        } catch (error) {
+            console.error(error);
+            throw error;
+        }
+    }
+
+    stopNotifying = async () => {
+        const meterId = Meter.getId();
+        const { SERVICE_UUID, RX } = Constants;
+        try {
+            await BleManager.stopNotification(meterId, SERVICE_UUID, RX);
+        } catch (error) {
+            console.error(error);
+            throw error;
+        }
+    }
+
+    sendTopUpRequest = async () => {
+        const meterId = Meter.getId();
+        const { SERVICE_UUID, RX, TX, START_TOP_UP } = Constants;
+        try {
+            await BleManager.retrieveServices(meterId);
+            await BleManager.startNotification(meterId, SERVICE_UUID, RX);
+            await BleManager.write(meterId, SERVICE_UUID, TX, START_TOP_UP);
+        } catch (error) {
+            console.error(error);
+            throw error;
+        }
+    }
+
+    startTopUp = async () => {
+        try {
+            const firstPacket = Meter.getNextPacket();
+            // const res = getCRCResponse(firstPacket, Meter.getExpectedCRCresponse());
+            // Meter.setExpectedCRCresponse(res);
+            await this.sendPacket(firstPacket);
+        } catch (error) {
+            console.error(error);
+            throw error;
+        }
+    }
+
+    sendPacket = async packet => {
+        const meterId = Meter.getId();
+        const { SERVICE_UUID, RX, TX } = Constants;
+        try {
+            await BleManager.retrieveServices(meterId);
+            await BleManager.startNotification(meterId, SERVICE_UUID, RX);
+            console.log("Sending Packet:", packet);
+            await BleManager.write(meterId, SERVICE_UUID, TX, packet);
+        } catch (error) {
+            console.error(error);
+            throw error;
+        }
+    }
+
+    killTransparentMode = async () => {
+        const meterId = Meter.getId();
+        const { SERVICE_UUID, RX, TX, BRING_FREEDOM_OUT_OF_TRANS_MODE } = Constants;
+        try {
+            await BleManager.retrieveServices(meterId);
+            await BleManager.startNotification(meterId, SERVICE_UUID, RX);
+            await BleManager.write(meterId, SERVICE_UUID, TX, BRING_FREEDOM_OUT_OF_TRANS_MODE);
+        } catch (error) {
+            console.error(error);
+            throw error;
+        }
+    }
 }
 
 const bluetoothService = new BluetoothService()
