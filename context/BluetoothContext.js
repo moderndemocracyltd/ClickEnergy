@@ -51,6 +51,7 @@ const useBluetoothContext = () => {
     }, []);
 
     useEffect(() => { handleMeterConnection() }, [meterConnected]);
+    useEffect(() => { handleIsToppingUp() }, [isToppingUp]);
     useEffect(() => { handleIsTransparent() }, [isTransparent]);
     useEffect(() => { handleStartTopUp() }, [startTopUp]);
     useEffect(() => { handleErrorMessage() }, [error]);
@@ -87,7 +88,16 @@ const useBluetoothContext = () => {
                 console.log("Meter Connected");
                 setShowDeviceList(false);
                 setIsToppingUp(true);
-                await BluetoothService.sendTransparentMessageToMeter()
+            }
+        } catch (error) {
+            setErrorMessage(error);
+        }
+    }
+
+    const handleIsToppingUp = async () => {
+        try {
+            if (isToppingUp) {
+                await BluetoothService.sendTransparentMessageToMeter();
             }
         } catch (error) {
             setErrorMessage(error);
