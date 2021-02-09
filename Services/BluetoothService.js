@@ -198,6 +198,7 @@ class BluetoothService {
     sendTransparentMessageToMeter = async () => {
         const meterId = Meter.getId();
         const { SERVICE_UUID, RX, TX, TRANSPARENT_COMMAND } = Constants;
+
         try {
             await BleManager.retrieveServices(meterId);
             await BleManager.startNotification(meterId, SERVICE_UUID, RX);

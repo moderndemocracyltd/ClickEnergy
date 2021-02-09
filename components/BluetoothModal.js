@@ -21,7 +21,6 @@ export default BluetoothHandler = (props) => {
     }, [keyCode]);
 
     return (
-        
         <View style={visible ? styles.modalBackground : {}}>
             <Modal visible={visible} animationType={'slide'} transparent={true}>
                 <TouchableOpacity style={styles.opactity} onPress={dismissModal}>
